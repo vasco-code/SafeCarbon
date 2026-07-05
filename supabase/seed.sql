@@ -269,3 +269,78 @@ insert into commercialization_documents (id, project_id, nfe_key, nfe_number, is
   ('64167c12-43d3-42dd-b705-a56d77cb75a3', '00000000-0000-0000-0000-0000000000a1', '35250111222333000181550010000012351000000123', '1235', '2025-06-20', '22333444000192', 150000),
   ('7ea0cc45-54e2-4601-be6e-9648af1fa971', '00000000-0000-0000-0000-0000000000a1', '35250111222333000181550010000012361000000123', '1236', '2025-09-05', '33444555000203', 81020)
 on conflict (id) do nothing;
+
+-- ============================================================================
+-- Seed do Sprint 3 — Biblioteca de fatores de emissão (Requisito 4).
+--
+-- Fatores de atividade (biomassa, diesel) do IPCC 2006 / GHG Protocol, mais os
+-- multiplicadores de GWP como fatores próprios e versionados (gwp_ch4, gwp_n2o)
+-- — cada um com gwp_version explícito, para nunca repetir a mistura AR5/AR6
+-- não documentada do DCP original (ver docs/03-modelo-de-dados.md). GWP do
+-- metano fica em AR5=28, o mesmo valor já fixado como parâmetro da
+-- metodologia (Sprint 1); GWP do N2O usa AR6=273 para o inventário
+-- operacional (não é parâmetro da metodologia, pode evoluir por versionamento
+-- de emission_factors sem tocar em methodology_parameters).
+-- ============================================================================
+
+insert into emission_factors (id, category, value, unit, gwp_version, source_citation, valid_from) values
+  ('00000000-0000-0000-0000-0000000000d1', 'biomass_ch4', 30, 'kg/TJ', null, 'IPCC 2006 Guidelines, Vol. 2 (Energy)', '2025-01-01'),
+  ('00000000-0000-0000-0000-0000000000d2', 'biomass_n2o', 4, 'kg/TJ', null, 'IPCC 2006 Guidelines, Vol. 2 (Energy)', '2025-01-01'),
+  ('00000000-0000-0000-0000-0000000000d3', 'biomass_ncv', 15, 'TJ/Gg', null, 'IPCC 2006 Guidelines, Vol. 2 (Energy) — poder calorífico líquido da lenha', '2025-01-01'),
+  ('00000000-0000-0000-0000-0000000000d4', 'diesel_co2e', 2.68, 'kg CO2e/L', null, 'GHG Protocol', '2025-01-01'),
+  ('00000000-0000-0000-0000-0000000000d5', 'gwp_ch4', 28, 'adimensional (GWP100)', 'AR5', 'IPCC AR5 — mesmo valor já fixado em methodology_parameters (Sprint 1)', '2025-01-01'),
+  ('00000000-0000-0000-0000-0000000000d6', 'gwp_n2o', 273, 'adimensional (GWP100)', 'AR6', 'IPCC AR6 — factor de inventário operacional, independente da metodologia', '2025-01-01')
+on conflict (id) do nothing;
+
+-- ============================================================================
+-- Seed do Sprint 3 — Inventário de emissões 2025 da Premix.
+--
+-- Números batem com o critério de aceite do roadmap: 4.524.860 kg de lenha +
+-- 331.956 L de diesel para 2025 → 1.020,77 tCO2e total (131,13 biomassa +
+-- 889,64 diesel), consistente com o "~1.021 tCO2e (131,1 + 889,6)" do
+-- roadmap. calculated_tco2e replicando exatamente a fórmula que
+-- InventarioPage roda no client antes do insert (nunca digitado à mão).
+-- ============================================================================
+
+insert into emission_inventory_entries (id, project_id, period_year, source_type, activity_quantity, activity_unit, emission_factor_ids, calculated_tco2e) values
+  (
+    '00000000-0000-0000-0000-0000000000e1',
+    '00000000-0000-0000-0000-0000000000a1',
+    2025,
+    'biomass_combustion',
+    4524860,
+    'kg',
+    array[
+      '00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000d2',
+      '00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000d5',
+      '00000000-0000-0000-0000-0000000000d6'
+    ]::uuid[],
+    131.1304428
+  ),
+  (
+    '00000000-0000-0000-0000-0000000000e2',
+    '00000000-0000-0000-0000-0000000000a1',
+    2025,
+    'diesel_transport',
+    331956,
+    'L',
+    array['00000000-0000-0000-0000-0000000000d4']::uuid[],
+    889.64208
+  )
+on conflict (id) do nothing;
+
+-- ============================================================================
+-- Seed do Sprint 3 — Avaliação de vazamentos (leakage) do ciclo 2025.
+--
+-- As 4 categorias que o DCP §8 já usa como framework, LF=0 em todas com
+-- justificativa obrigatória (nunca implícito) — a metodologia da Premix não
+-- prevê vazamento relevante hoje, mas o campo já fica pronto para um projeto
+-- futuro onde LF>0 (ver docs/02-requisitos-funcionais.md, Requisito 4.2).
+-- ============================================================================
+
+insert into leakage_assessments (id, project_id, period_year, category, conclusion, justification, leakage_factor_pct) values
+  ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000a1', 2025, 'rebound_effect', 'Não identificado', 'O uso do Fator P não gera aumento de escala de produção pecuária que compense a mitigação — a redução é por animal suplementado, não por expansão de rebanho.', 0),
+  ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000a1', 2025, 'technology_substitution', 'Não identificado', 'O aditivo substitui parte da dieta convencional sem deslocar outra tecnologia de mitigação já em uso pelas fazendas-clientes.', 0),
+  ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000a1', 2025, 'supply_chain', 'Não identificado', 'Emissões da cadeia produtiva do próprio Fator P (energia, transporte, resíduos) já são deduzidas integralmente no inventário operacional, não no vazamento — sem sobreposição de contabilização.', 0),
+  ('00000000-0000-0000-0000-0000000000f4', '00000000-0000-0000-0000-0000000000a1', 2025, 'geographic_displacement', 'Não identificado', 'A comercialização é nacional e distribuída (ver SafeGisTrace, Requisito de integração), sem concentração que sugira deslocamento de produção pecuária entre regiões.', 0)
+on conflict (id) do nothing;

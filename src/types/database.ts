@@ -134,6 +134,59 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["commercialization_documents"]["Row"]>;
         Relationships: [];
       };
+      emission_factors: {
+        Row: {
+          id: string;
+          category: string;
+          value: number;
+          unit: string | null;
+          gwp_version: string | null;
+          source_citation: string | null;
+          valid_from: string;
+          valid_to: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["emission_factors"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["emission_factors"]["Row"]>;
+        Relationships: [];
+      };
+      emission_inventory_entries: {
+        Row: {
+          id: string;
+          project_id: string;
+          period_year: number;
+          source_type: string;
+          activity_quantity: number;
+          activity_unit: string;
+          emission_factor_ids: string[];
+          calculated_tco2e: number;
+          justification: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["emission_inventory_entries"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["emission_inventory_entries"]["Row"]>;
+        Relationships: [];
+      };
+      leakage_assessments: {
+        Row: {
+          id: string;
+          project_id: string;
+          period_year: number;
+          category:
+            | "rebound_effect"
+            | "technology_substitution"
+            | "supply_chain"
+            | "geographic_displacement"
+            | "other";
+          conclusion: string;
+          justification: string;
+          leakage_factor_pct: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["leakage_assessments"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["leakage_assessments"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: {
       production_period_summary: {
