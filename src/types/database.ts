@@ -280,6 +280,36 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["resumo_calculo_documents"]["Row"]>;
         Relationships: [];
       };
+      verification_cycles: {
+        Row: {
+          id: string;
+          project_id: string;
+          period_start_year: number;
+          period_end_year: number;
+          vvb_org_id: string | null;
+          status: "scheduled" | "in_progress" | "approved" | "rejected";
+          verification_statement_url: string | null;
+          findings: { texto: string } | null;
+          verified_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["verification_cycles"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["verification_cycles"]["Row"]>;
+        Relationships: [];
+      };
+      monitoring_reports: {
+        Row: {
+          id: string;
+          project_id: string;
+          period_year: number;
+          exported_docx_url: string | null;
+          exported_pdf_url: string | null;
+          generated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["monitoring_reports"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["monitoring_reports"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: {
       production_period_summary: {

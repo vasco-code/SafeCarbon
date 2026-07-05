@@ -344,3 +344,27 @@ insert into leakage_assessments (id, project_id, period_year, category, conclusi
   ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000a1', 2025, 'supply_chain', 'Não identificado', 'Emissões da cadeia produtiva do próprio Fator P (energia, transporte, resíduos) já são deduzidas integralmente no inventário operacional, não no vazamento — sem sobreposição de contabilização.', 0),
   ('00000000-0000-0000-0000-0000000000f4', '00000000-0000-0000-0000-0000000000a1', 2025, 'geographic_displacement', 'Não identificado', 'A comercialização é nacional e distribuída (ver SafeGisTrace, Requisito de integração), sem concentração que sugira deslocamento de produção pecuária entre regiões.', 0)
 on conflict (id) do nothing;
+
+-- ============================================================================
+-- Seed do Sprint 6 — MRV e Verificação: organização VVB, usuário verificador
+-- e o ciclo de verificação do período 2025 da Premix.
+--
+-- Pré-requisito: vvb.auditor@safecarbon.test já existe em auth.users (criado
+-- via Auth Admin API) -> 4a76d719-0762-42e2-ac60-9a037f2a460c
+-- ============================================================================
+
+insert into organizations (id, name, org_type, tax_id) values
+  ('00000000-0000-0000-0000-000000000004', 'EcoVerifica VVB', 'verifier', null)
+on conflict (id) do nothing;
+
+insert into org_members (org_id, user_id, member_role) values
+  ('00000000-0000-0000-0000-000000000004', '4a76d719-0762-42e2-ac60-9a037f2a460c', 'manager')
+on conflict (org_id, user_id) do nothing;
+
+insert into project_roles (project_id, org_id, role) values
+  ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-000000000004', 'verifier')
+on conflict (project_id, org_id, role) do nothing;
+
+insert into verification_cycles (id, project_id, period_start_year, period_end_year, vvb_org_id, status) values
+  ('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-0000000000a1', 2025, 2025, '00000000-0000-0000-0000-000000000004', 'in_progress')
+on conflict (id) do nothing;
