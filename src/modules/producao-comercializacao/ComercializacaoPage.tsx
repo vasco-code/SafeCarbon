@@ -9,6 +9,8 @@ interface CommercializationDocument {
   issue_date: string;
   buyer_tax_id: string | null;
   quantity_kg: number;
+  already_credited: boolean;
+  linked_production_period_year: number | null;
 }
 
 interface ParsedNfe {
@@ -68,7 +70,7 @@ export function ComercializacaoPage() {
     if (!projectId) return;
     const { data } = await supabase
       .from("commercialization_documents")
-      .select("id, nfe_key, nfe_number, issue_date, buyer_tax_id, quantity_kg")
+      .select("id, nfe_key, nfe_number, issue_date, buyer_tax_id, quantity_kg, already_credited, linked_production_period_year")
       .eq("project_id", projectId)
       .order("issue_date", { ascending: false });
     setDocuments(data ?? []);
@@ -113,6 +115,40 @@ export function ComercializacaoPage() {
     }
   }
 
+  async function handleToggleCredited(doc: CommercializationDocument) {
+    const { error } = await supabase
+      .from("commercialization_documents")
+      .update({ already_credited: !doc.already_credited })
+      .eq("id", doc.id);
+    if (error) {
+      setError(error.message);
+    } else {
+      loadDocuments();
+    }
+  }
+
+  async function handleSetLinkedYear(doc: CommercializationDocument, value: string) {
+    const { error } = await supabase
+      .from("commercialization_documents")
+      .update({ linked_production_period_year: value ? Number(value) : null })
+      .eq("id", doc.id);
+    if (error) {
+      setError(error.message);
+    } else {
+      loadDocuments();
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Excluir esta NF-e importada? Essa ação não pode ser desfeita.")) return;
+    const { error } = await supabase.from("commercialization_documents").delete().eq("id", id);
+    if (error) {
+      setError(error.message);
+    } else {
+      loadDocuments();
+    }
+  }
+
   const totalCommercialized = documents.reduce((sum, d) => sum + d.quantity_kg, 0);
 
   return (
@@ -141,28 +177,67 @@ export function ComercializacaoPage() {
       <h2>
         Notas importadas ({documents.length}) — total {totalCommercialized.toLocaleString("pt-BR")} kg
       </h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Chave</th>
-            <th>Número</th>
-            <th>Emissão</th>
-            <th>Comprador</th>
-            <th>Quantidade (kg)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {documents.map((d) => (
-            <tr key={d.id}>
-              <td>{d.nfe_key}</td>
-              <td>{d.nfe_number}</td>
-              <td>{d.issue_date}</td>
-              <td>{d.buyer_tax_id}</td>
-              <td>{d.quantity_kg.toLocaleString("pt-BR")}</td>
+      <p style={{ marginBottom: "0.5rem" }}>
+        "Já creditado" e "Ano vinculado" alimentam a reconciliação Fe do motor de cálculo — marque uma
+        NF-e como já creditada quando o volume dela já entrou num ciclo anterior, para não contar duas
+        vezes.
+      </p>
+      {documents.length === 0 && (
+        <div className="empty-state">
+          <p>Nenhuma NF-e importada ainda. Use o campo acima para importar o primeiro XML.</p>
+        </div>
+      )}
+      {documents.length > 0 && (
+        <table>
+          <thead>
+            <tr>
+              <th>Chave</th>
+              <th>Número</th>
+              <th>Emissão</th>
+              <th>Comprador</th>
+              <th>Quantidade (kg)</th>
+              <th>Já creditado</th>
+              <th>Ano vinculado</th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {documents.map((d) => (
+              <tr key={d.id}>
+                <td className="mono" title={d.nfe_key}>
+                  {d.nfe_key.slice(0, 8)}…{d.nfe_key.slice(-4)}
+                </td>
+                <td>{d.nfe_number}</td>
+                <td>{d.issue_date}</td>
+                <td>{d.buyer_tax_id}</td>
+                <td>{d.quantity_kg.toLocaleString("pt-BR")}</td>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={d.already_credited}
+                    onChange={() => handleToggleCredited(d)}
+                    aria-label="Já creditado"
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    style={{ width: "5.5rem" }}
+                    defaultValue={d.linked_production_period_year ?? ""}
+                    onBlur={(e) => handleSetLinkedYear(d, e.target.value)}
+                    aria-label="Ano de produção vinculado"
+                  />
+                </td>
+                <td className="row-actions">
+                  <button type="button" className="btn-icon-danger" onClick={() => handleDelete(d.id)}>
+                    Excluir
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </section>
   );
 }

@@ -88,6 +88,16 @@ export function VazamentosPage() {
     }
   }
 
+  async function handleDelete(id: string) {
+    if (!confirm("Excluir esta avaliação de vazamento? Essa ação não pode ser desfeita.")) return;
+    const { error } = await supabase.from("leakage_assessments").delete().eq("id", id);
+    if (error) {
+      setError(error.message);
+    } else {
+      loadData();
+    }
+  }
+
   const yearsWithLeakage = new Set(
     assessments.filter((a) => a.leakage_factor_pct > 0).map((a) => a.period_year),
   );
@@ -141,33 +151,48 @@ export function VazamentosPage() {
       </form>
 
       <h2>Avaliações registradas</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Ano</th>
-            <th>Categoria</th>
-            <th>Conclusão</th>
-            <th>Justificativa</th>
-            <th>LF (%)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {assessments.map((a) => (
-            <tr key={a.id}>
-              <td>
-                {a.period_year}
-                {yearsWithLeakage.has(a.period_year) && a.leakage_factor_pct > 0 && (
-                  <span className="auth-error"> ⚠ LF&gt;0</span>
-                )}
-              </td>
-              <td>{CATEGORY_LABELS[a.category]}</td>
-              <td>{a.conclusion}</td>
-              <td>{a.justification}</td>
-              <td>{a.leakage_factor_pct}</td>
+      {assessments.length === 0 && (
+        <div className="empty-state">
+          <p>Nenhuma avaliação de vazamento registrada ainda. O motor de cálculo exige ao menos uma por ano.</p>
+        </div>
+      )}
+      {assessments.length > 0 && (
+        <table>
+          <thead>
+            <tr>
+              <th>Ano</th>
+              <th>Categoria</th>
+              <th>Conclusão</th>
+              <th>Justificativa</th>
+              <th>LF (%)</th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {assessments.map((a) => (
+              <tr key={a.id}>
+                <td>
+                  {a.period_year}
+                  {yearsWithLeakage.has(a.period_year) && a.leakage_factor_pct > 0 && (
+                    <span className="badge badge-warning" style={{ marginLeft: "0.4rem" }}>
+                      ⚠ LF&gt;0
+                    </span>
+                  )}
+                </td>
+                <td>{CATEGORY_LABELS[a.category]}</td>
+                <td>{a.conclusion}</td>
+                <td>{a.justification}</td>
+                <td>{a.leakage_factor_pct}</td>
+                <td className="row-actions">
+                  <button type="button" className="btn-icon-danger" onClick={() => handleDelete(a.id)}>
+                    Excluir
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </section>
   );
 }

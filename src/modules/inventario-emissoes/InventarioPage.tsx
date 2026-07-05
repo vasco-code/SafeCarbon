@@ -165,6 +165,16 @@ export function InventarioPage() {
     }
   }
 
+  async function handleDelete(id: string) {
+    if (!confirm("Excluir este lançamento de inventário? Essa ação não pode ser desfeita.")) return;
+    const { error } = await supabase.from("emission_inventory_entries").delete().eq("id", id);
+    if (error) {
+      setError(error.message);
+    } else {
+      loadData();
+    }
+  }
+
   const totalTco2e = entries.reduce((sum, e) => sum + e.calculated_tco2e, 0);
 
   return (
@@ -219,30 +229,43 @@ export function InventarioPage() {
       </form>
 
       <h2>Lançamentos — total {totalTco2e.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Ano</th>
-            <th>Fonte</th>
-            <th>Quantidade</th>
-            <th>tCO₂e</th>
-            <th>Justificativa</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((e) => (
-            <tr key={e.id}>
-              <td>{e.period_year}</td>
-              <td>{SOURCE_LABELS[e.source_type as SourceType] ?? e.source_type}</td>
-              <td>
-                {e.activity_quantity.toLocaleString("pt-BR")} {e.activity_unit}
-              </td>
-              <td>{e.calculated_tco2e.toLocaleString("pt-BR", { maximumFractionDigits: 4 })}</td>
-              <td>{e.justification ?? "—"}</td>
+      {entries.length === 0 && (
+        <div className="empty-state">
+          <p>Nenhuma fonte de emissão lançada ainda. Use o formulário acima para registrar a primeira.</p>
+        </div>
+      )}
+      {entries.length > 0 && (
+        <table>
+          <thead>
+            <tr>
+              <th>Ano</th>
+              <th>Fonte</th>
+              <th>Quantidade</th>
+              <th>tCO₂e</th>
+              <th>Justificativa</th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {entries.map((e) => (
+              <tr key={e.id}>
+                <td>{e.period_year}</td>
+                <td>{SOURCE_LABELS[e.source_type as SourceType] ?? e.source_type}</td>
+                <td>
+                  {e.activity_quantity.toLocaleString("pt-BR")} {e.activity_unit}
+                </td>
+                <td>{e.calculated_tco2e.toLocaleString("pt-BR", { maximumFractionDigits: 4 })}</td>
+                <td>{e.justification ?? "—"}</td>
+                <td className="row-actions">
+                  <button type="button" className="btn-icon-danger" onClick={() => handleDelete(e.id)}>
+                    Excluir
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </section>
   );
 }

@@ -49,6 +49,16 @@ export function ProducaoPage() {
     loadData();
   }, [projectId]);
 
+  async function handleDelete(id: string) {
+    if (!confirm("Excluir este lançamento de produção? Essa ação não pode ser desfeita.")) return;
+    const { error } = await supabase.from("production_records").delete().eq("id", id);
+    if (error) {
+      setError(error.message);
+    } else {
+      loadData();
+    }
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!projectId) return;
@@ -137,26 +147,39 @@ export function ProducaoPage() {
       </table>
 
       <h2>Lançamentos</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Ano</th>
-            <th>Mês</th>
-            <th>Quantidade (kg)</th>
-            <th>Origem</th>
-          </tr>
-        </thead>
-        <tbody>
-          {records.map((r) => (
-            <tr key={r.id}>
-              <td>{r.period_year}</td>
-              <td>{r.period_month ?? "—"}</td>
-              <td>{r.quantity_kg.toLocaleString("pt-BR")}</td>
-              <td>{r.source}</td>
+      {records.length === 0 && (
+        <div className="empty-state">
+          <p>Nenhum lançamento de produção ainda. Use o formulário acima para registrar o primeiro.</p>
+        </div>
+      )}
+      {records.length > 0 && (
+        <table>
+          <thead>
+            <tr>
+              <th>Ano</th>
+              <th>Mês</th>
+              <th>Quantidade (kg)</th>
+              <th>Origem</th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {records.map((r) => (
+              <tr key={r.id}>
+                <td>{r.period_year}</td>
+                <td>{r.period_month ?? "—"}</td>
+                <td>{r.quantity_kg.toLocaleString("pt-BR")}</td>
+                <td>{r.source}</td>
+                <td className="row-actions">
+                  <button type="button" className="btn-icon-danger" onClick={() => handleDelete(r.id)}>
+                    Excluir
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </section>
   );
 }

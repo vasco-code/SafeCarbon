@@ -23,6 +23,7 @@ export interface Database {
             | "verifier"
             | "buyer";
           tax_id: string | null;
+          created_by: string | null;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["organizations"]["Row"]>;
@@ -98,6 +99,17 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["carbon_projects"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["carbon_projects"]["Row"]>;
+        Relationships: [];
+      };
+      project_roles: {
+        Row: {
+          project_id: string;
+          org_id: string;
+          role: "proponent" | "developer" | "verifier" | "admin";
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["project_roles"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["project_roles"]["Row"]>;
         Relationships: [];
       };
       production_records: {
@@ -368,6 +380,24 @@ export interface Database {
         Relationships: [];
       };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      get_org_members_with_email: {
+        Args: { p_org_id: string };
+        Returns: {
+          user_id: string;
+          email: string;
+          member_role: string;
+          created_at: string;
+        }[];
+      };
+      is_platform_admin: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      has_project_role: {
+        Args: { p_project_id: string; p_roles: string[] };
+        Returns: boolean;
+      };
+    };
   };
 }
