@@ -36,6 +36,47 @@ export interface Database {
         Insert: Partial<Database["public"]["Tables"]["org_members"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["org_members"]["Row"]>;
       };
+      methodologies: {
+        Row: {
+          id: string;
+          name: string;
+          sector: string;
+          ipcc_category: string | null;
+          owner_org_id: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["methodologies"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["methodologies"]["Row"]>;
+      };
+      methodology_versions: {
+        Row: {
+          id: string;
+          methodology_id: string;
+          version_label: string;
+          status: "draft" | "published" | "deprecated";
+          supersedes_version_id: string | null;
+          sections: Record<string, { titulo: string; corpo: string }>;
+          published_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["methodology_versions"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["methodology_versions"]["Row"]>;
+      };
+      methodology_parameters: {
+        Row: {
+          id: string;
+          methodology_version_id: string;
+          param_key: string;
+          value: number;
+          unit: string | null;
+          source_citation: string | null;
+          valid_from: string;
+          valid_to: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["methodology_parameters"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["methodology_parameters"]["Row"]>;
+      };
       carbon_projects: {
         Row: {
           id: string;

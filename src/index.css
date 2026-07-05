@@ -209,3 +209,76 @@ form select {
   padding: 2rem;
   color: var(--sc-text-muted);
 }
+
+.app-main table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.app-main th,
+.app-main td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.app-main th {
+  color: var(--sc-text-muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.methodology-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.methodology-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.methodology-nav button {
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--sc-text-muted);
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.methodology-nav button:hover {
+  background: var(--sc-surface);
+  color: var(--sc-text);
+}
+
+.methodology-nav button.active {
+  background: var(--sc-surface);
+  color: var(--sc-accent);
+  font-weight: 600;
+}
+
+.methodology-content {
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: 10px;
+  padding: 1.5rem;
+}
+
+.methodology-content h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+.methodology-content p {
+  color: var(--sc-text);
+  line-height: 1.5;
+  margin: 0 0 1rem;
+}
