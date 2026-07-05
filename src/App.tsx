@@ -1,4 +1,4 @@
-import { BrowserRouter, Link } from "react-router-dom";
+import { BrowserRouter, Link, NavLink } from "react-router-dom";
 import { AppRoutes } from "@/routes";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -11,9 +11,17 @@ function Header() {
       {session && (
         <>
           <nav>
-            <Link to="/projetos">Projetos</Link>
-            <Link to="/metodologias">Metodologias</Link>
-            {canManageUsers && <Link to="/usuarios">Usuários</Link>}
+            <NavLink to="/projetos" className={({ isActive }) => (isActive ? "active" : "")}>
+              Projetos
+            </NavLink>
+            <NavLink to="/metodologias" className={({ isActive }) => (isActive ? "active" : "")}>
+              Metodologias
+            </NavLink>
+            {canManageUsers && (
+              <NavLink to="/usuarios" className={({ isActive }) => (isActive ? "active" : "")}>
+                Usuários
+              </NavLink>
+            )}
           </nav>
           <div className="app-header-user">
             <Link to="/conta">{user?.email}</Link>

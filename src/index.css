@@ -1,12 +1,46 @@
 :root {
-  --sc-bg: #0b1120;
-  --sc-surface: #111a2e;
-  --sc-border: #1f2c47;
-  --sc-text: #e6ebf5;
-  --sc-text-muted: #8b96ad;
-  --sc-accent: #34d399;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  color-scheme: dark;
+  /* Superfície */
+  --sc-bg: oklch(1.000 0.000 0);
+  --sc-surface: oklch(0.970 0.008 269);
+  --sc-surface-2: oklch(0.945 0.010 269);
+  --sc-border: oklch(0.870 0.012 269);
+
+  /* Texto */
+  --sc-ink: oklch(0.190 0.012 269);
+  --sc-muted: oklch(0.500 0.014 269);
+
+  /* Marca */
+  --sc-primary: oklch(0.440 0.150 269);
+  --sc-primary-hover: oklch(0.360 0.140 269);
+  --sc-primary-dark: oklch(0.300 0.130 269);
+  --sc-accent: oklch(0.700 0.130 195);
+  --sc-accent-dark: oklch(0.500 0.130 195);
+
+  /* Estado semântico */
+  --sc-success: oklch(0.500 0.140 145);
+  --sc-success-bg: oklch(0.950 0.045 145);
+  --sc-danger: oklch(0.520 0.180 25);
+  --sc-danger-bg: oklch(0.955 0.045 25);
+  --sc-warning: oklch(0.680 0.150 70);
+  --sc-warning-bg: oklch(0.960 0.050 70);
+
+  /* Tipografia */
+  --sc-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sc-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sc-text-xs: 0.75rem;
+  --sc-text-sm: 0.8125rem;
+  --sc-text-base: 0.9375rem;
+  --sc-text-lg: 1.125rem;
+  --sc-text-xl: 1.375rem;
+  --sc-text-2xl: 1.75rem;
+
+  /* Forma */
+  --sc-radius: 8px;
+  --sc-radius-sm: 4px;
+  --sc-shadow: 0 1px 2px oklch(0.19 0.012 269 / 0.06), 0 1px 1px oklch(0.19 0.012 269 / 0.04);
+
+  font-family: var(--sc-font);
+  color-scheme: light;
 }
 
 * {
@@ -16,7 +50,24 @@
 body {
   margin: 0;
   background: var(--sc-bg);
-  color: var(--sc-text);
+  color: var(--sc-ink);
+  font-size: var(--sc-text-base);
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-main {
+    animation: sc-fade-in 180ms ease-out;
+  }
+}
+
+@keyframes sc-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .app-shell {
@@ -29,14 +80,15 @@ body {
   display: flex;
   align-items: center;
   gap: 2rem;
-  padding: 1rem 1.5rem;
+  padding: 0.875rem 1.5rem;
   border-bottom: 1px solid var(--sc-border);
-  background: var(--sc-surface);
+  background: var(--sc-bg);
 }
 
 .app-header strong {
-  color: var(--sc-accent);
-  letter-spacing: 0.02em;
+  color: var(--sc-primary);
+  letter-spacing: 0.01em;
+  font-size: var(--sc-text-lg);
 }
 
 .app-header nav {
@@ -45,36 +97,58 @@ body {
 }
 
 .app-header nav a {
-  color: var(--sc-text-muted);
+  color: var(--sc-muted);
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: var(--sc-text-sm);
+  font-weight: 500;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+  transition: color 180ms ease-out, border-color 180ms ease-out;
 }
 
 .app-header nav a:hover {
-  color: var(--sc-text);
+  color: var(--sc-ink);
+}
+
+.app-header nav a.active {
+  color: var(--sc-primary);
+  border-bottom-color: var(--sc-primary);
 }
 
 .app-main {
   flex: 1;
-  padding: 2rem 1.5rem;
-  max-width: 960px;
+  padding: 2rem 1.5rem 4rem;
+  max-width: 1100px;
   width: 100%;
   margin: 0 auto;
 }
 
 .app-main h1 {
-  margin: 0 0 0.5rem;
-  font-size: 1.5rem;
+  margin: 0 0 0.375rem;
+  font-size: var(--sc-text-xl);
+  font-weight: 700;
+  color: var(--sc-ink);
+}
+
+.app-main h2 {
+  font-size: var(--sc-text-lg);
+  font-weight: 600;
+  color: var(--sc-ink);
+}
+
+.app-main > p:first-of-type {
+  color: var(--sc-muted);
+  margin: 0 0 1.5rem;
 }
 
 .app-main p {
-  color: var(--sc-text-muted);
+  color: var(--sc-muted);
   margin: 0;
 }
 
 .app-main ul {
   padding-left: 1.1rem;
-  color: var(--sc-text-muted);
+  color: var(--sc-muted);
 }
 
 .app-header-user {
@@ -85,48 +159,107 @@ body {
 }
 
 .app-header-user a {
-  color: var(--sc-text-muted);
+  color: var(--sc-muted);
   text-decoration: none;
-  font-size: 0.85rem;
+  font-size: var(--sc-text-sm);
 }
 
 .app-header-user a:hover {
-  color: var(--sc-text);
+  color: var(--sc-ink);
 }
 
 button {
   font-family: inherit;
 }
 
+/* Botão primário — uma única aparência em todo o app. */
 button[type="submit"],
-.app-header-user button {
-  border-radius: 6px;
+.btn-primary {
+  background: var(--sc-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--sc-radius);
   padding: 0.5rem 1rem;
-  font-size: 0.85rem;
+  font-size: var(--sc-text-sm);
   font-weight: 600;
   cursor: pointer;
+  margin-top: 1.25rem;
+  transition: background 150ms ease-out;
 }
 
-button[type="submit"] {
-  background: var(--sc-accent);
-  color: #06231a;
+button[type="submit"]:hover:not(:disabled),
+.btn-primary:hover:not(:disabled) {
+  background: var(--sc-primary-hover);
+}
+
+/* Botão secundário — usado para ações não-destrutivas fora de um <form> (ex.: "Calcular ciclo"). */
+main button[type="button"] {
+  background: transparent;
+  color: var(--sc-ink);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius);
+  padding: 0.5rem 1rem;
+  font-size: var(--sc-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease-out, border-color 150ms ease-out;
+}
+
+main button[type="button"]:hover:not(:disabled) {
+  background: var(--sc-surface-2);
+  border-color: var(--sc-muted);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--sc-danger);
+  border: 1px solid oklch(0.520 0.180 25 / 0.35);
+  border-radius: var(--sc-radius);
+  padding: 0.5rem 1rem;
+  font-size: var(--sc-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease-out;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--sc-danger-bg);
+}
+
+.btn-icon-danger {
+  background: none;
   border: none;
-  margin-top: 1.25rem;
+  color: var(--sc-muted);
+  cursor: pointer;
+  padding: 0.25rem 0.4rem;
+  border-radius: var(--sc-radius-sm);
+  font-size: var(--sc-text-sm);
+  transition: color 150ms ease-out, background 150ms ease-out;
+}
+
+.btn-icon-danger:hover:not(:disabled) {
+  color: var(--sc-danger);
+  background: var(--sc-danger-bg);
 }
 
 .app-header-user button {
   background: transparent;
-  color: var(--sc-text-muted);
+  color: var(--sc-muted);
   border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius);
+  padding: 0.4rem 0.85rem;
+  font-size: var(--sc-text-sm);
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .app-header-user button:hover {
-  color: var(--sc-text);
-  border-color: var(--sc-text-muted);
+  color: var(--sc-ink);
+  border-color: var(--sc-muted);
 }
 
 button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -134,14 +267,15 @@ button:disabled {
   max-width: 360px;
   margin: 3rem auto;
   padding: 2rem;
-  background: var(--sc-surface);
+  background: var(--sc-bg);
   border: 1px solid var(--sc-border);
   border-radius: 12px;
+  box-shadow: var(--sc-shadow);
 }
 
 .auth-card h1 {
   margin: 0 0 1.5rem;
-  font-size: 1.25rem;
+  font-size: var(--sc-text-xl);
 }
 
 form {
@@ -151,19 +285,31 @@ form {
 }
 
 form label {
-  font-size: 0.8rem;
-  color: var(--sc-text-muted);
+  font-size: var(--sc-text-sm);
+  font-weight: 500;
+  color: var(--sc-muted);
   margin-top: 0.75rem;
 }
 
 form input,
-form select {
+form select,
+form textarea {
   background: var(--sc-bg);
   border: 1px solid var(--sc-border);
-  color: var(--sc-text);
-  border-radius: 6px;
+  color: var(--sc-ink);
+  border-radius: var(--sc-radius);
   padding: 0.55rem 0.7rem;
-  font-size: 0.9rem;
+  font-size: var(--sc-text-base);
+  font-family: inherit;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+form input:focus,
+form select:focus,
+form textarea:focus {
+  outline: none;
+  border-color: var(--sc-primary);
+  box-shadow: 0 0 0 2px oklch(0.440 0.150 269 / 0.18);
 }
 
 .password-input {
@@ -183,56 +329,165 @@ form select {
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: var(--sc-text-muted);
+  color: var(--sc-muted);
   cursor: pointer;
   padding: 0.2rem;
   display: flex;
 }
 
 .password-toggle:hover {
-  color: var(--sc-text);
+  color: var(--sc-ink);
 }
 
 .auth-error {
-  color: #f87171;
-  font-size: 0.85rem;
+  color: var(--sc-danger);
+  font-size: var(--sc-text-sm);
   margin: 0.75rem 0 0;
 }
 
 .auth-success {
-  color: var(--sc-accent);
-  font-size: 0.85rem;
+  color: var(--sc-success);
+  font-size: var(--sc-text-sm);
   margin: 0.75rem 0 0;
 }
 
 .auth-loading {
   padding: 2rem;
-  color: var(--sc-text-muted);
+  color: var(--sc-muted);
 }
 
 .app-main table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 1rem;
-  font-size: 0.9rem;
+  font-size: var(--sc-text-sm);
 }
 
 .app-main th,
 .app-main td {
   text-align: left;
-  padding: 0.5rem 0.75rem;
+  padding: 0.55rem 0.75rem;
   border-bottom: 1px solid var(--sc-border);
 }
 
+.app-main tbody tr {
+  transition: background 120ms ease-out;
+}
+
+.app-main tbody tr:hover {
+  background: var(--sc-surface);
+}
+
 .app-main th {
-  color: var(--sc-text-muted);
+  color: var(--sc-muted);
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: var(--sc-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  background: var(--sc-surface-2);
+}
+
+.app-main td.num,
+.app-main th.num {
+  font-feature-settings: "tnum" 1;
+  text-align: right;
+}
+
+.app-main code,
+.mono {
+  font-family: var(--sc-font-mono);
+  font-size: 0.85em;
+  background: var(--sc-surface-2);
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--sc-radius-sm);
+}
+
+/* Badge de status — sempre texto + cor, nunca cor sozinha. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: var(--sc-text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-success {
+  background: var(--sc-success-bg);
+  color: oklch(0.360 0.140 145);
+}
+
+.badge-danger {
+  background: var(--sc-danger-bg);
+  color: oklch(0.420 0.180 25);
+}
+
+.badge-warning {
+  background: var(--sc-warning-bg);
+  color: oklch(0.420 0.150 70);
+}
+
+.badge-neutral {
+  background: var(--sc-surface-2);
+  color: var(--sc-muted);
+}
+
+.badge-info {
+  background: oklch(0.950 0.030 195);
+  color: var(--sc-accent-dark);
+}
+
+/* Estado vazio — sempre explica o que vai aparecer ali. */
+.empty-state {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  border: 1px dashed var(--sc-border);
+  border-radius: var(--sc-radius);
+  margin-top: 1rem;
+}
+
+.empty-state p {
+  margin: 0 auto;
+  max-width: 40ch;
+}
+
+.card {
+  background: var(--sc-bg);
+  border: 1px solid var(--sc-border);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: var(--sc-shadow);
+}
+
+.card + .card {
+  margin-top: 1rem;
+}
+
+.metric {
+  font-size: var(--sc-text-2xl);
+  font-weight: 700;
+  font-feature-settings: "tnum" 1;
+  color: var(--sc-ink);
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.app-main tbody tr:hover .row-actions,
+.app-main tbody tr:focus-within .row-actions {
+  opacity: 1;
 }
 
 .methodology-layout {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 240px 1fr;
   gap: 1.5rem;
   margin-top: 1.5rem;
 }
@@ -240,52 +495,53 @@ form select {
 .methodology-nav {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.15rem;
 }
 
 .methodology-nav button {
   text-align: left;
   background: none;
   border: none;
-  color: var(--sc-text-muted);
+  color: var(--sc-muted);
   padding: 0.5rem 0.6rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
+  border-radius: var(--sc-radius);
+  font-size: var(--sc-text-sm);
   cursor: pointer;
 }
 
 .methodology-nav button:hover {
   background: var(--sc-surface);
-  color: var(--sc-text);
+  color: var(--sc-ink);
 }
 
 .methodology-nav button.active {
   background: var(--sc-surface);
-  color: var(--sc-accent);
+  color: var(--sc-primary);
   font-weight: 600;
 }
 
 .methodology-content {
-  background: var(--sc-surface);
+  background: var(--sc-bg);
   border: 1px solid var(--sc-border);
   border-radius: 10px;
   padding: 1.5rem;
+  box-shadow: var(--sc-shadow);
 }
 
 .methodology-content h2 {
   margin-top: 0;
-  font-size: 1.1rem;
+  font-size: var(--sc-text-lg);
 }
 
 .methodology-content p {
-  color: var(--sc-text);
-  line-height: 1.5;
+  color: var(--sc-ink);
+  line-height: 1.6;
   margin: 0 0 1rem;
 }
 
 .nfe-preview {
   margin-top: 1rem;
-  padding: 1rem;
+  padding: 1rem 1.25rem;
   background: var(--sc-surface);
   border: 1px solid var(--sc-border);
   border-radius: 10px;
@@ -294,47 +550,56 @@ form select {
 
 .nfe-preview p {
   margin: 0 0 0.4rem;
-  font-size: 0.85rem;
+  font-size: var(--sc-text-sm);
+  color: var(--sc-ink);
 }
 
 .project-nav-list {
   list-style: none;
   padding-left: 0;
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .project-nav-list a {
-  color: var(--sc-accent);
+  color: var(--sc-primary);
   text-decoration: none;
+  font-size: var(--sc-text-sm);
+  font-weight: 500;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius);
+  transition: background 150ms ease-out, border-color 150ms ease-out;
 }
 
 .project-nav-list a:hover {
-  text-decoration: underline;
+  background: var(--sc-surface);
+  border-color: var(--sc-primary);
 }
 
 .dcp-section {
   margin-top: 1.5rem;
-  padding: 1rem 1.25rem;
-  background: var(--sc-surface);
+  padding: 1.25rem 1.5rem;
+  background: var(--sc-bg);
   border: 1px solid var(--sc-border);
   border-radius: 10px;
+  box-shadow: var(--sc-shadow);
 }
 
 .dcp-section h2 {
   margin: 0 0 0.75rem;
-  font-size: 1rem;
+  font-size: var(--sc-text-base);
   display: flex;
   align-items: center;
   gap: 0.6rem;
 }
 
 .dcp-generated-badge {
-  font-size: 0.7rem;
+  font-size: var(--sc-text-xs);
   font-weight: 600;
-  color: var(--sc-accent);
-  border: 1px solid var(--sc-accent);
+  color: var(--sc-accent-dark);
+  background: oklch(0.950 0.030 195);
   border-radius: 999px;
   padding: 0.1rem 0.6rem;
 }
@@ -342,8 +607,9 @@ form select {
 .dcp-generated-content {
   white-space: pre-wrap;
   font-family: inherit;
-  color: var(--sc-text);
-  font-size: 0.85rem;
+  color: var(--sc-ink);
+  font-size: var(--sc-text-sm);
+  line-height: 1.6;
   margin: 0;
 }
 
@@ -351,10 +617,72 @@ form select {
   width: 100%;
   background: var(--sc-bg);
   border: 1px solid var(--sc-border);
-  color: var(--sc-text);
-  border-radius: 6px;
+  color: var(--sc-ink);
+  border-radius: var(--sc-radius);
   padding: 0.6rem;
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: var(--sc-text-sm);
   margin-bottom: 0.5rem;
+}
+
+/* Selo público de verificação (páginas de QR code, sem login). */
+.verify-page {
+  min-height: 100vh;
+  background: var(--sc-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.verify-card {
+  max-width: 480px;
+  width: 100%;
+  background: var(--sc-bg);
+  border: 1px solid var(--sc-border);
+  border-radius: 14px;
+  box-shadow: var(--sc-shadow);
+  padding: 2rem;
+}
+
+.verify-seal {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--sc-radius);
+  font-size: var(--sc-text-lg);
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+}
+
+.verify-seal.valid {
+  background: var(--sc-success-bg);
+  color: oklch(0.360 0.140 145);
+}
+
+.verify-seal.invalid {
+  background: var(--sc-danger-bg);
+  color: oklch(0.420 0.180 25);
+}
+
+.verify-field {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--sc-border);
+  font-size: var(--sc-text-sm);
+}
+
+.verify-field dt {
+  color: var(--sc-muted);
+}
+
+.verify-field dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--sc-ink);
+  text-align: right;
+  font-feature-settings: "tnum" 1;
 }
