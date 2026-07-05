@@ -1,0 +1,73 @@
+:root {
+  --sc-bg: #0b1120;
+  --sc-surface: #111a2e;
+  --sc-border: #1f2c47;
+  --sc-text: #e6ebf5;
+  --sc-text-muted: #8b96ad;
+  --sc-accent: #34d399;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--sc-bg);
+  color: var(--sc-text);
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--sc-border);
+  background: var(--sc-surface);
+}
+
+.app-header strong {
+  color: var(--sc-accent);
+  letter-spacing: 0.02em;
+}
+
+.app-header nav {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.app-header nav a {
+  color: var(--sc-text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.app-header nav a:hover {
+  color: var(--sc-text);
+}
+
+.app-main {
+  flex: 1;
+  padding: 2rem 1.5rem;
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.app-main h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+}
+
+.app-main p {
+  color: var(--sc-text-muted);
+  margin: 0;
+}
