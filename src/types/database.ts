@@ -310,6 +310,37 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["monitoring_reports"]["Row"]>;
         Relationships: [];
       };
+      credit_issuances: {
+        Row: {
+          id: string;
+          credit_batch_id: string;
+          verification_cycle_id: string | null;
+          issued_amount_tco2e: number;
+          serial_number_start: string | null;
+          serial_number_end: string | null;
+          issued_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["credit_issuances"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["credit_issuances"]["Row"]>;
+        Relationships: [];
+      };
+      blockchain_tokens: {
+        Row: {
+          id: string;
+          credit_issuance_id: string;
+          token_id: string;
+          tx_hash: string;
+          ledger_ref: string | null;
+          status: "active" | "transferred" | "retired";
+          owner_reference: string | null;
+          retired_at: string | null;
+          retired_reason: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["blockchain_tokens"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["blockchain_tokens"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: {
       production_period_summary: {

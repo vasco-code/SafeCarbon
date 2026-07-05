@@ -18,10 +18,21 @@ interface CycleRow {
 }
 
 interface BatchRow {
+  id: string;
   tco2e_amount: number;
   commercialization_factor: number | null;
   eligibility_factor: number;
   status: string;
+}
+
+interface TokenRow {
+  id: string;
+  token_id: string;
+  tx_hash: string;
+  ledger_ref: string | null;
+  status: string;
+  retired_at: string | null;
+  retired_reason: string | null;
 }
 
 const STEP_LABELS: Record<string, string> = {
@@ -42,9 +53,14 @@ export function CicloCalculoPage() {
   const [cycle, setCycle] = useState<CycleRow | null>(null);
   const [steps, setSteps] = useState<StepRow[]>([]);
   const [batch, setBatch] = useState<BatchRow | null>(null);
+  const [token, setToken] = useState<TokenRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
+  const [issuing, setIssuing] = useState(false);
+  const [retiring, setRetiring] = useState(false);
+  const [retireReason, setRetireReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   async function loadData() {
     if (!projectId || !year) return;
@@ -57,6 +73,7 @@ export function CicloCalculoPage() {
       .maybeSingle();
 
     setCycle(cycleRow ?? null);
+    setToken(null);
 
     if (cycleRow) {
       const [stepsResult, batchResult] = await Promise.all([
@@ -67,12 +84,28 @@ export function CicloCalculoPage() {
           .order("step_number"),
         supabase
           .from("credit_batches")
-          .select("tco2e_amount, commercialization_factor, eligibility_factor, status")
+          .select("id, tco2e_amount, commercialization_factor, eligibility_factor, status")
           .eq("cycle_id", cycleRow.id)
           .maybeSingle(),
       ]);
       setSteps(stepsResult.data ?? []);
       setBatch(batchResult.data ?? null);
+
+      if (batchResult.data) {
+        const { data: issuance } = await supabase
+          .from("credit_issuances")
+          .select("id")
+          .eq("credit_batch_id", batchResult.data.id)
+          .maybeSingle();
+        if (issuance) {
+          const { data: tokenRow } = await supabase
+            .from("blockchain_tokens")
+            .select("id, token_id, tx_hash, ledger_ref, status, retired_at, retired_reason")
+            .eq("credit_issuance_id", issuance.id)
+            .maybeSingle();
+          setToken(tokenRow ?? null);
+        }
+      }
     } else {
       setSteps([]);
       setBatch(null);
@@ -99,6 +132,45 @@ export function CicloCalculoPage() {
     }
   }
 
+  async function handleIssue() {
+    if (!batch) return;
+    setIssuing(true);
+    setError(null);
+    setMessage(null);
+    const { data, error } = await supabase.functions.invoke("issue-credit-batch", {
+      body: { creditBatchId: batch.id },
+    });
+    setIssuing(false);
+    if (error) {
+      setError((data as { error?: string } | null)?.error ?? error.message ?? "Erro ao emitir o token.");
+    } else {
+      setMessage("Crédito tokenizado na blockchain (adaptador simulado).");
+      loadData();
+    }
+  }
+
+  async function handleRetire() {
+    if (!token) return;
+    if (!retireReason.trim()) {
+      setError("Informe o motivo da aposentadoria.");
+      return;
+    }
+    setRetiring(true);
+    setError(null);
+    setMessage(null);
+    const { data, error } = await supabase.functions.invoke("retire-credit", {
+      body: { blockchainTokenId: token.id, reason: retireReason },
+    });
+    setRetiring(false);
+    if (error) {
+      setError((data as { error?: string } | null)?.error ?? error.message ?? "Erro ao aposentar o token.");
+    } else {
+      setMessage("Token aposentado.");
+      setRetireReason("");
+      loadData();
+    }
+  }
+
   if (loading) {
     return <p>Carregando...</p>;
   }
@@ -116,6 +188,7 @@ export function CicloCalculoPage() {
       )}
 
       {error && <p className="auth-error">{error}</p>}
+      {message && <p className="auth-success">{message}</p>}
 
       <button type="button" onClick={handleCalculate} disabled={calculating}>
         {calculating ? "Calculando..." : cycle ? "Recalcular ciclo" : "Calcular ciclo"}
@@ -129,6 +202,44 @@ export function CicloCalculoPage() {
           <p>Fc (comercialização): {batch.commercialization_factor?.toFixed(4)}</p>
           <p>Fe (elegibilidade/reconciliação): {batch.eligibility_factor.toFixed(4)}</p>
           <p>Status do lote: {batch.status}</p>
+        </div>
+      )}
+
+      {batch && (batch.status === "approved" || batch.status === "issued") && (
+        <div className="dcp-section">
+          <h2>Emissão e Tokenização (adaptador simulado)</h2>
+          {!token && (
+            <button type="button" onClick={handleIssue} disabled={issuing}>
+              {issuing ? "Emitindo..." : "Emitir crédito na blockchain"}
+            </button>
+          )}
+          {token && (
+            <>
+              <p>Token: {token.token_id}</p>
+              <p>tx_hash: {token.tx_hash}</p>
+              <p>Ledger ref: {token.ledger_ref}</p>
+              <p>Status: {token.status}</p>
+              {token.status === "retired" ? (
+                <p>
+                  Aposentado em {token.retired_at && new Date(token.retired_at).toLocaleString("pt-BR")} — motivo:{" "}
+                  {token.retired_reason}
+                </p>
+              ) : (
+                <>
+                  <label htmlFor="retire-reason">Motivo da aposentadoria</label>
+                  <input
+                    id="retire-reason"
+                    type="text"
+                    value={retireReason}
+                    onChange={(e) => setRetireReason(e.target.value)}
+                  />
+                  <button type="button" onClick={handleRetire} disabled={retiring}>
+                    {retiring ? "Aposentando..." : "Aposentar (retire)"}
+                  </button>
+                </>
+              )}
+            </>
+          )}
         </div>
       )}
 
