@@ -1,4 +1,4 @@
-import { BrowserRouter, Link, NavLink } from "react-router-dom";
+import { BrowserRouter, Link, NavLink, useLocation } from "react-router-dom";
 import { AppRoutes } from "@/routes";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -35,15 +35,31 @@ function Header() {
   );
 }
 
+// Páginas públicas de verificação (QR code) são "brand-lite" e full-bleed —
+// não usam o chrome do app interno (header/nav), mesmo que o visitante tenha
+// uma sessão autenticada aberta em outra aba.
+function AppShell() {
+  const { pathname } = useLocation();
+  const isPublicVerificationPage = pathname.startsWith("/verificar/");
+
+  if (isPublicVerificationPage) {
+    return <AppRoutes />;
+  }
+
+  return (
+    <div className="app-shell">
+      <Header />
+      <main className="app-main">
+        <AppRoutes />
+      </main>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="app-shell">
-        <Header />
-        <main className="app-main">
-          <AppRoutes />
-        </main>
-      </div>
+      <AppShell />
     </BrowserRouter>
   );
 }

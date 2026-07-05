@@ -686,3 +686,34 @@ form textarea:focus {
   text-align: right;
   font-feature-settings: "tnum" 1;
 }
+
+.verify-qr {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.verify-qr img {
+  border-radius: var(--sc-radius);
+  border: 1px solid var(--sc-border);
+}
+
+/* Relatório de emissões — grid de cartões-resumo (KPI). */
+.report-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin: 1.5rem 0 2rem;
+}
+
+.report-kpi-label {
+  margin: 0 0 0.35rem;
+  font-size: var(--sc-text-sm);
+  color: var(--sc-muted);
+}
+
+@media (max-width: 900px) {
+  .report-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

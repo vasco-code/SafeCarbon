@@ -398,6 +398,24 @@ export interface Database {
         Args: { p_project_id: string; p_roles: string[] };
         Returns: boolean;
       };
+      get_public_token_verification: {
+        Args: { p_token_id: string };
+        Returns: {
+          token_id: string;
+          tx_hash: string;
+          ledger_ref: string | null;
+          status: string;
+          issued_amount_tco2e: number;
+          issued_at: string;
+          retired_at: string | null;
+          retired_reason: string | null;
+          project_name: string;
+          methodology_name: string | null;
+          methodology_version: string | null;
+          registry_standard: string;
+          period_year: number;
+        }[];
+      };
     };
   };
 }

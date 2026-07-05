@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 
 interface StepRow {
@@ -248,6 +248,11 @@ export function CicloCalculoPage() {
               <p>tx_hash: {token.tx_hash}</p>
               <p>Ledger ref: {token.ledger_ref}</p>
               <p>Status: {token.status}</p>
+              <p>
+                <Link to={`/verificar/${token.token_id}`} target="_blank" rel="noreferrer">
+                  Ver página pública de verificação (com QR code) ↗
+                </Link>
+              </p>
               {token.status === "retired" ? (
                 <p>
                   Aposentado em {token.retired_at && new Date(token.retired_at).toLocaleString("pt-BR")} — motivo:{" "}

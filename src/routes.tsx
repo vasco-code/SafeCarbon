@@ -14,9 +14,11 @@ import { ProducaoPage } from "@/modules/producao-comercializacao/ProducaoPage";
 import { ComercializacaoPage } from "@/modules/producao-comercializacao/ComercializacaoPage";
 import { InventarioPage } from "@/modules/inventario-emissoes/InventarioPage";
 import { VazamentosPage } from "@/modules/inventario-emissoes/VazamentosPage";
+import { RelatorioEmissoesPage } from "@/modules/inventario-emissoes/RelatorioEmissoesPage";
 import { CicloCalculoPage } from "@/modules/creditos/CicloCalculoPage";
 import { VerificacaoPage } from "@/modules/creditos/VerificacaoPage";
 import { DistribuicaoPage } from "@/modules/distribuicao/DistribuicaoPage";
+import { VerificarTokenPage } from "@/modules/verificacao-publica/VerificarTokenPage";
 
 export function AppRoutes() {
   return (
@@ -24,6 +26,7 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
       <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
+      <Route path="/verificar/:tokenId" element={<VerificarTokenPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<Navigate to="/projetos" replace />} />
@@ -44,6 +47,10 @@ export function AppRoutes() {
         />
         <Route path="/projetos/:projectId/inventario" element={<InventarioPage />} />
         <Route path="/projetos/:projectId/vazamentos" element={<VazamentosPage />} />
+        <Route
+          path="/projetos/:projectId/relatorio-emissoes"
+          element={<RelatorioEmissoesPage />}
+        />
         <Route
           path="/projetos/:projectId/ciclos/:year"
           element={<CicloCalculoPage />}
