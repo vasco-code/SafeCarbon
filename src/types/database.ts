@@ -187,6 +187,57 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["leakage_assessments"]["Row"]>;
         Relationships: [];
       };
+      credit_calculation_cycles: {
+        Row: {
+          id: string;
+          project_id: string;
+          period_year: number;
+          methodology_version_id: string;
+          status:
+            | "draft"
+            | "calculated"
+            | "in_verification"
+            | "verified"
+            | "approved"
+            | "issued"
+            | "rejected";
+          calculated_at: string | null;
+          calculated_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["credit_calculation_cycles"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["credit_calculation_cycles"]["Row"]>;
+        Relationships: [];
+      };
+      credit_calculation_steps: {
+        Row: {
+          id: string;
+          cycle_id: string;
+          step_number: number;
+          step_key: string;
+          input_values: Record<string, unknown>;
+          output_value: number;
+          unit: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["credit_calculation_steps"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["credit_calculation_steps"]["Row"]>;
+        Relationships: [];
+      };
+      credit_batches: {
+        Row: {
+          id: string;
+          cycle_id: string;
+          tco2e_amount: number;
+          commercialization_factor: number | null;
+          eligibility_factor: number;
+          status: "pending_verification" | "verified" | "approved" | "issued" | "retired";
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["credit_batches"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["credit_batches"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: {
       production_period_summary: {

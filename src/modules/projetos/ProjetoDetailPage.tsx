@@ -72,6 +72,12 @@ export function ProjetoDetailPage() {
           <Link to={`/projetos/${project.id}/vazamentos`}>Avaliação de vazamentos</Link>
         </li>
         <li>
+          <Link to={`/projetos/${project.id}/ciclos/${new Date().getFullYear()}`}>Ciclo de créditos</Link>
+        </li>
+        <li>
+          <Link to={`/projetos/${project.id}/verificacao`}>Verificação</Link>
+        </li>
+        <li>
           <Link to={`/projetos/${project.id}/dcp`}>DCP</Link>
         </li>
       </ul>
