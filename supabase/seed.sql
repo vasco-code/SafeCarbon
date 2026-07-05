@@ -246,3 +246,26 @@ update carbon_projects
 set methodology_version_id = '00000000-0000-0000-0000-0000000000b2'
 where id = '00000000-0000-0000-0000-0000000000a1'
   and methodology_version_id is distinct from '00000000-0000-0000-0000-0000000000b2';
+
+-- ============================================================================
+-- Seed do Sprint 2 — Produção & Comercialização (ciclo 2025 da Premix).
+--
+-- Números batem com o critério de aceite do roadmap: Pfp = 441,57 t (441570 kg),
+-- Tc = 431,02 t (431020 kg) → Fc = 0,9761. São o input real que o motor de
+-- cálculo do Sprint 4 vai consumir para chegar em 83.230 tCO2e — não é dado
+-- de teste descartável.
+--
+-- As 3 notas fiscais abaixo têm chave/CNPJ sintéticos (não são NF-e reais da
+-- Premix — esses documentos originais não foram fornecidos nesta sessão), mas
+-- a soma das quantidades é a soma real de comercialização de 2025.
+-- ============================================================================
+
+insert into production_records (id, project_id, period_year, quantity_kg, source) values
+  ('e293c0a2-ec38-4c94-8b4a-ddbd04ce078b', '00000000-0000-0000-0000-0000000000a1', 2025, 441570, 'manual_entry')
+on conflict (id) do nothing;
+
+insert into commercialization_documents (id, project_id, nfe_key, nfe_number, issue_date, buyer_tax_id, quantity_kg) values
+  ('7ca18fd2-32cc-4409-89f6-565af5102d85', '00000000-0000-0000-0000-0000000000a1', '35250111222333000181550010000012341000000123', '1234', '2025-03-15', '11222333000181', 200000),
+  ('64167c12-43d3-42dd-b705-a56d77cb75a3', '00000000-0000-0000-0000-0000000000a1', '35250111222333000181550010000012351000000123', '1235', '2025-06-20', '22333444000192', 150000),
+  ('7ea0cc45-54e2-4601-be6e-9648af1fa971', '00000000-0000-0000-0000-0000000000a1', '35250111222333000181550010000012361000000123', '1236', '2025-09-05', '33444555000203', 81020)
+on conflict (id) do nothing;

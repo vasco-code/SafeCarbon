@@ -282,3 +282,34 @@ form select {
   line-height: 1.5;
   margin: 0 0 1rem;
 }
+
+.nfe-preview {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: 10px;
+  max-width: 420px;
+}
+
+.nfe-preview p {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+}
+
+.project-nav-list {
+  list-style: none;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.project-nav-list a {
+  color: var(--sc-accent);
+  text-decoration: none;
+}
+
+.project-nav-list a:hover {
+  text-decoration: underline;
+}

@@ -6,6 +6,8 @@
 //   supabase gen types typescript --project-id <ref> > src/types/database.ts
 //
 // Até lá, mantemos apenas os tipos mínimos usados pelo scaffold para não travar o build.
+// `Relationships: []` é exigido pela constraint genérica GenericTable do postgrest-js — sem
+// isso, o TypeScript não resolve os overloads de insert/update e cai silenciosamente em `never`.
 
 export interface Database {
   public: {
@@ -25,6 +27,7 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["organizations"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["organizations"]["Row"]>;
+        Relationships: [];
       };
       org_members: {
         Row: {
@@ -35,6 +38,7 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["org_members"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["org_members"]["Row"]>;
+        Relationships: [];
       };
       methodologies: {
         Row: {
@@ -47,6 +51,7 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["methodologies"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["methodologies"]["Row"]>;
+        Relationships: [];
       };
       methodology_versions: {
         Row: {
@@ -61,6 +66,7 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["methodology_versions"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["methodology_versions"]["Row"]>;
+        Relationships: [];
       };
       methodology_parameters: {
         Row: {
@@ -76,6 +82,7 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["methodology_parameters"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["methodology_parameters"]["Row"]>;
+        Relationships: [];
       };
       carbon_projects: {
         Row: {
@@ -91,7 +98,55 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["carbon_projects"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["carbon_projects"]["Row"]>;
+        Relationships: [];
+      };
+      production_records: {
+        Row: {
+          id: string;
+          project_id: string;
+          period_year: number;
+          period_month: number | null;
+          quantity_kg: number;
+          source: "erp_integration" | "manual_entry";
+          evidence_doc_url: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["production_records"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["production_records"]["Row"]>;
+        Relationships: [];
+      };
+      commercialization_documents: {
+        Row: {
+          id: string;
+          project_id: string;
+          nfe_key: string;
+          nfe_number: string | null;
+          issue_date: string;
+          buyer_tax_id: string | null;
+          quantity_kg: number;
+          raw_file_url: string | null;
+          linked_production_period_year: number | null;
+          already_credited: boolean;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["commercialization_documents"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["commercialization_documents"]["Row"]>;
+        Relationships: [];
       };
     };
+    Views: {
+      production_period_summary: {
+        Row: {
+          project_id: string;
+          period_year: number;
+          total_produced_kg: number;
+          total_commercialized_kg: number;
+          commercialization_factor: number | null;
+        };
+        Relationships: [];
+      };
+    };
+    Functions: Record<string, never>;
   };
 }
