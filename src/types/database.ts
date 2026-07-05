@@ -26,6 +26,16 @@ export interface Database {
         Insert: Partial<Database["public"]["Tables"]["organizations"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["organizations"]["Row"]>;
       };
+      org_members: {
+        Row: {
+          org_id: string;
+          user_id: string;
+          member_role: "owner" | "manager" | "contributor" | "viewer";
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["org_members"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["org_members"]["Row"]>;
+      };
       carbon_projects: {
         Row: {
           id: string;

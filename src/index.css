@@ -71,3 +71,141 @@ body {
   color: var(--sc-text-muted);
   margin: 0;
 }
+
+.app-main ul {
+  padding-left: 1.1rem;
+  color: var(--sc-text-muted);
+}
+
+.app-header-user {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+.app-header-user a {
+  color: var(--sc-text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.app-header-user a:hover {
+  color: var(--sc-text);
+}
+
+button {
+  font-family: inherit;
+}
+
+button[type="submit"],
+.app-header-user button {
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button[type="submit"] {
+  background: var(--sc-accent);
+  color: #06231a;
+  border: none;
+  margin-top: 1.25rem;
+}
+
+.app-header-user button {
+  background: transparent;
+  color: var(--sc-text-muted);
+  border: 1px solid var(--sc-border);
+}
+
+.app-header-user button:hover {
+  color: var(--sc-text);
+  border-color: var(--sc-text-muted);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-card {
+  max-width: 360px;
+  margin: 3rem auto;
+  padding: 2rem;
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: 12px;
+}
+
+.auth-card h1 {
+  margin: 0 0 1.5rem;
+  font-size: 1.25rem;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+form label {
+  font-size: 0.8rem;
+  color: var(--sc-text-muted);
+  margin-top: 0.75rem;
+}
+
+form input,
+form select {
+  background: var(--sc-bg);
+  border: 1px solid var(--sc-border);
+  color: var(--sc-text);
+  border-radius: 6px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.9rem;
+}
+
+.password-input {
+  position: relative;
+  display: flex;
+}
+
+.password-input input {
+  flex: 1;
+  padding-right: 2.25rem;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--sc-text-muted);
+  cursor: pointer;
+  padding: 0.2rem;
+  display: flex;
+}
+
+.password-toggle:hover {
+  color: var(--sc-text);
+}
+
+.auth-error {
+  color: #f87171;
+  font-size: 0.85rem;
+  margin: 0.75rem 0 0;
+}
+
+.auth-success {
+  color: var(--sc-accent);
+  font-size: 0.85rem;
+  margin: 0.75rem 0 0;
+}
+
+.auth-loading {
+  padding: 2rem;
+  color: var(--sc-text-muted);
+}
