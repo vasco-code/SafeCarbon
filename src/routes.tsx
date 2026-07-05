@@ -16,6 +16,7 @@ import { InventarioPage } from "@/modules/inventario-emissoes/InventarioPage";
 import { VazamentosPage } from "@/modules/inventario-emissoes/VazamentosPage";
 import { CicloCalculoPage } from "@/modules/creditos/CicloCalculoPage";
 import { VerificacaoPage } from "@/modules/creditos/VerificacaoPage";
+import { DistribuicaoPage } from "@/modules/distribuicao/DistribuicaoPage";
 
 export function AppRoutes() {
   return (
@@ -50,6 +51,10 @@ export function AppRoutes() {
         <Route
           path="/projetos/:projectId/verificacao"
           element={<VerificacaoPage />}
+        />
+        <Route
+          path="/projetos/:projectId/distribuicao"
+          element={<DistribuicaoPage />}
         />
       </Route>
     </Routes>

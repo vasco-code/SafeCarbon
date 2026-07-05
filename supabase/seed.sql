@@ -368,3 +368,22 @@ on conflict (project_id, org_id, role) do nothing;
 insert into verification_cycles (id, project_id, period_start_year, period_end_year, vvb_org_id, status) values
   ('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-0000000000a1', 2025, 2025, '00000000-0000-0000-0000-000000000004', 'in_progress')
 on conflict (id) do nothing;
+
+-- ============================================================================
+-- Seed do Sprint 8 — Distribuição Geográfica (DCP Figura 5).
+--
+-- Pontos ILUSTRATIVOS de polos pecuários brasileiros onde o Fator P é
+-- distribuído — não são geocodificados a partir das NF-e reais (essas NF-e já
+-- são sintéticas desde o Sprint 2, sem endereço real do comprador). Servem só
+-- para o mapa de distribuição; `safegistrace_analysis_id` fica null porque a
+-- metodologia da Premix é production-based, não farm-based (não depende de
+-- análise de compliance por local — ver docs/04, seção 2).
+-- ============================================================================
+
+insert into project_sites (id, project_id, label, latitude, longitude) values
+  ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-0000000000a1', 'Cuiabá, MT', -15.601400, -56.097900),
+  ('00000000-0000-0000-0000-000000000202', '00000000-0000-0000-0000-0000000000a1', 'Barretos, SP', -20.557100, -48.567500),
+  ('00000000-0000-0000-0000-000000000203', '00000000-0000-0000-0000-0000000000a1', 'Uberaba, MG', -19.748600, -47.931800),
+  ('00000000-0000-0000-0000-000000000204', '00000000-0000-0000-0000-0000000000a1', 'Ribeirão Preto, SP', -21.178500, -47.806900),
+  ('00000000-0000-0000-0000-000000000205', '00000000-0000-0000-0000-0000000000a1', 'Goiânia, GO', -16.686900, -49.264500)
+on conflict (id) do nothing;

@@ -341,6 +341,20 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["blockchain_tokens"]["Row"]>;
         Relationships: [];
       };
+      project_sites: {
+        Row: {
+          id: string;
+          project_id: string;
+          label: string;
+          latitude: number | null;
+          longitude: number | null;
+          safegistrace_analysis_id: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["project_sites"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["project_sites"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: {
       production_period_summary: {

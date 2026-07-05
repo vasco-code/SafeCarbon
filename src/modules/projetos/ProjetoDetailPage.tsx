@@ -192,6 +192,9 @@ export function ProjetoDetailPage() {
           <Link to={`/projetos/${project.id}/verificacao`}>Verificação</Link>
         </li>
         <li>
+          <Link to={`/projetos/${project.id}/distribuicao`}>Distribuição geográfica</Link>
+        </li>
+        <li>
           <Link to={`/projetos/${project.id}/dcp`}>DCP</Link>
         </li>
       </ul>
