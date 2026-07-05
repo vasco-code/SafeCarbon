@@ -387,3 +387,109 @@ insert into project_sites (id, project_id, label, latitude, longitude) values
   ('00000000-0000-0000-0000-000000000204', '00000000-0000-0000-0000-0000000000a1', 'Ribeirão Preto, SP', -21.178500, -47.806900),
   ('00000000-0000-0000-0000-000000000205', '00000000-0000-0000-0000-0000000000a1', 'Goiânia, GO', -16.686900, -49.264500)
 on conflict (id) do nothing;
+
+-- ============================================================================
+-- Seed do Sprint 9 — Hardening multi-projeto: segundo projeto fictício, de
+-- domínio genuinamente diferente do Fator P, SEM nenhuma migration nova —
+-- só estas linhas de dados. Prova que carbon_projects/methodology_*/
+-- production_records/emission_inventory_entries/leakage_assessments/
+-- credit_calculation_* acomodam um projeto farm-based (sequestro de carbono
+-- via manejo de pastagem) sem qualquer alteração de schema.
+--
+-- Reaproveita `production_records.quantity_kg` para guardar hectares
+-- manejados (não kg) — é exatamente a mesma coluna que a Premix usa para "kg
+-- de aditivo produzido": ambas são, na prática, "a unidade primária de
+-- quantificação do projeto" (docs/03), só com unidade diferente por domínio.
+-- O motor de cálculo deste projeto (calculate-credit-cycle-pasture, Edge
+-- Function separada — ver supabase/functions/) lê esse valor sabendo que
+-- aqui ele significa hectares, não kg.
+-- ============================================================================
+
+insert into organizations (id, name, org_type, tax_id) values
+  ('00000000-0000-0000-0000-000000000005', 'Fazenda Santa Fé', 'proponent', null)
+on conflict (id) do nothing;
+
+insert into methodologies (id, name, sector, ipcc_category, owner_org_id) values (
+  '00000000-0000-0000-0000-000000000301',
+  'Sequestro de Carbono via Manejo Rotacionado de Pastagem',
+  'AFOLU',
+  '3.C - Terras Agrícolas (Manejo do Solo)',
+  '00000000-0000-0000-0000-000000000002'
+) on conflict (id) do nothing;
+
+insert into methodology_versions (id, methodology_id, version_label, status, sections, published_at) values (
+  '00000000-0000-0000-0000-000000000302',
+  '00000000-0000-0000-0000-000000000301',
+  '1.0',
+  'published',
+  jsonb_build_object(
+    'enquadramento', jsonb_build_object(
+      'titulo', 'Enquadramento Metodológico',
+      'corpo', $txt$Projeto farm-based de remoção de carbono via manejo rotacionado de pastagem — recuperação de pastagens degradadas com pastejo rotacionado, aumentando o estoque de carbono orgânico do solo (COS).
+
+Setor: AFOLU. Escopo IPCC: 3.C (Terras Agrícolas — Manejo do Solo).
+
+Unidade de quantificação: hectares sob manejo rotacionado, por ano — diferente da Premix (que quantifica por tonelada de aditivo produzido), mas armazenada na mesma coluna do schema (production_records.quantity_kg), provando que o modelo de dados não amarra a semântica da unidade a um domínio específico.$txt$
+    ),
+    'principio_central', jsonb_build_object(
+      'titulo', 'Princípio Central',
+      'corpo', $txt$O manejo rotacionado de pastagem (períodos de pastejo intercalados com descanso) aumenta a cobertura vegetal e o aporte de matéria orgânica ao solo, elevando o estoque de carbono orgânico em relação à pastagem degradada convencional (linha de base).
+
+A remoção líquida de CO₂ é calculada aplicando uma taxa de sequestro conservadora por hectare manejado, descontadas as emissões operacionais da própria atividade de manejo (combustível para maquinário, cercas, deslocamento) e os fatores de integridade (incerteza e permanência).$txt$
+    ),
+    'fatores_integridade', jsonb_build_object(
+      'titulo', 'Fatores de Integridade',
+      'corpo', $txt$Desconto de incerteza: 15% sobre o sequestro líquido — maior que o das metodologias de emissão evitada (ex.: 10% da Premix), porque a mensuração de carbono no solo tem variabilidade espacial maior que a mensuração direta de produção industrial.
+
+Buffer de permanência: 20% — reflete o risco de reversão (ex.: retorno a manejo convencional, seca, incêndio) inerente a projetos de remoção baseados em solo, sensivelmente maior que o risco de não-permanência de um projeto de emissão evitada (ex.: 5% da Premix). Cada metodologia define seu próprio buffer, sem qualquer alteração de schema — `integrity_buffer_pct` é só mais uma linha em `methodology_parameters`.$txt$
+    ),
+    'mrv', jsonb_build_object(
+      'titulo', 'MRV',
+      'corpo', $txt$Monitoramento anual da área efetivamente sob manejo rotacionado (hectares) e das emissões operacionais associadas (combustível, insumos). Verificação independente nos mesmos moldes do projeto Premix — mesmo papel `verifier`, mesmo fluxo de `verification_cycles`, sem nenhuma tabela nova.$txt$
+    )
+  ),
+  now()
+) on conflict (id) do nothing;
+
+insert into methodology_parameters (id, methodology_version_id, param_key, value, unit, source_citation, valid_from) values
+  ('00000000-0000-0000-0000-000000000303', '00000000-0000-0000-0000-000000000302', 'sequestration_rate_tco2e_per_ha_year', 2.5, 'tCO2e/ha/ano', 'Literatura de manejo rotacionado de pastagem em solos tropicais (valor conservador ilustrativo)', '2025-01-01'),
+  ('00000000-0000-0000-0000-000000000304', '00000000-0000-0000-0000-000000000302', 'uncertainty_discount_pct', 15, '%', 'Maior variabilidade espacial de estoque de carbono no solo vs. medição direta de produção', '2025-01-01'),
+  ('00000000-0000-0000-0000-000000000305', '00000000-0000-0000-0000-000000000302', 'integrity_buffer_pct', 20, '%', 'Risco de reversão de projetos de remoção baseados em solo (maior que emissão evitada)', '2025-01-01')
+on conflict (id) do nothing;
+
+insert into carbon_projects (id, name, proponent_org_id, developer_org_id, methodology_version_id, status) values (
+  '00000000-0000-0000-0000-000000000310',
+  'Fazenda Santa Fé - Pastagem Rotacionada',
+  '00000000-0000-0000-0000-000000000005',
+  '00000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000302',
+  'design'
+) on conflict (id) do nothing;
+
+insert into project_roles (project_id, org_id, role) values
+  ('00000000-0000-0000-0000-000000000310', '00000000-0000-0000-0000-000000000005', 'proponent'),
+  ('00000000-0000-0000-0000-000000000310', '00000000-0000-0000-0000-000000000002', 'developer')
+on conflict (project_id, org_id, role) do nothing;
+
+-- 850 "kg" = 850 hectares manejados em 2025 (reaproveitando a coluna, ver nota acima).
+insert into production_records (id, project_id, period_year, quantity_kg, source) values
+  ('00000000-0000-0000-0000-000000000311', '00000000-0000-0000-0000-000000000310', 2025, 850, 'manual_entry')
+on conflict (id) do nothing;
+
+-- 5.000 L de diesel para maquinário/cercas do manejo rotacionado em 2025 —
+-- reaproveita o mesmo fator diesel_co2e já seedado no Sprint 3, sem nenhum
+-- fator novo: 5000 * 2.68 / 1000 = 13,4 tCO2e.
+insert into emission_inventory_entries (id, project_id, period_year, source_type, activity_quantity, activity_unit, emission_factor_ids, calculated_tco2e) values (
+  '00000000-0000-0000-0000-000000000312',
+  '00000000-0000-0000-0000-000000000310',
+  2025,
+  'diesel_transport',
+  5000,
+  'L',
+  array['00000000-0000-0000-0000-0000000000d4']::uuid[],
+  13.4
+) on conflict (id) do nothing;
+
+insert into leakage_assessments (id, project_id, period_year, category, conclusion, justification, leakage_factor_pct) values
+  ('00000000-0000-0000-0000-000000000313', '00000000-0000-0000-0000-000000000310', 2025, 'geographic_displacement', 'Não identificado', 'O rebanho permanece na mesma área da fazenda durante o manejo rotacionado — não há deslocamento da pecuária para outra propriedade que anule o sequestro local.', 0)
+on conflict (id) do nothing;

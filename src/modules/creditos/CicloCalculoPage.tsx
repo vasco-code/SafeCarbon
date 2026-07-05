@@ -46,7 +46,21 @@ const STEP_LABELS: Record<string, string> = {
   subtracao_emissoes_operacionais: "8. Subtração das emissões operacionais",
   ajuste_vazamento: "8b. Ajuste de vazamento (LF)",
   fatores_integridade: "9. Fatores de integridade (final)",
+  area_manejada_ha: "1. Área manejada",
+  sequestro_bruto: "2. Sequestro bruto",
+  deducao_emissoes_operacionais_pastagem: "3. Dedução das emissões operacionais",
+  desconto_incerteza: "4. Desconto de incerteza",
+  buffer_permanencia: "5. Buffer de permanência (final)",
 };
+
+// Cada metodologia pode ter seu próprio motor de cálculo (Edge Function
+// própria — ver Sprint 9/hardening multi-projeto), sem exigir nenhuma
+// migration nova: o roteamento é só esta tabela no client. Metodologias
+// futuras não listadas aqui caem no motor padrão (calculate-credit-cycle).
+const METHODOLOGY_CALC_FUNCTIONS: Record<string, string> = {
+  "00000000-0000-0000-0000-000000000301": "calculate-credit-cycle-pasture",
+};
+const DEFAULT_CALC_FUNCTION = "calculate-credit-cycle";
 
 export function CicloCalculoPage() {
   const { projectId, year } = useParams<{ projectId: string; year: string }>();
@@ -61,10 +75,22 @@ export function CicloCalculoPage() {
   const [retireReason, setRetireReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [methodologyId, setMethodologyId] = useState<string | null>(null);
 
   async function loadData() {
     if (!projectId || !year) return;
     setLoading(true);
+
+    const { data: projectRow } = await supabase
+      .from("carbon_projects")
+      .select("methodology_versions(methodology_id)")
+      .eq("id", projectId)
+      .maybeSingle();
+    setMethodologyId(
+      (projectRow as unknown as { methodology_versions: { methodology_id: string } | null } | null)
+        ?.methodology_versions?.methodology_id ?? null,
+    );
+
     const { data: cycleRow } = await supabase
       .from("credit_calculation_cycles")
       .select("id, status, calculated_at")
@@ -121,7 +147,10 @@ export function CicloCalculoPage() {
     if (!projectId || !year) return;
     setCalculating(true);
     setError(null);
-    const { data, error } = await supabase.functions.invoke("calculate-credit-cycle", {
+    const functionName = methodologyId
+      ? METHODOLOGY_CALC_FUNCTIONS[methodologyId] ?? DEFAULT_CALC_FUNCTION
+      : DEFAULT_CALC_FUNCTION;
+    const { data, error } = await supabase.functions.invoke(functionName, {
       body: { projectId, periodYear: Number(year) },
     });
     setCalculating(false);
