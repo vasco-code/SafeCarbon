@@ -238,6 +238,48 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["credit_batches"]["Row"]>;
         Relationships: [];
       };
+      dcp_documents: {
+        Row: {
+          id: string;
+          project_id: string;
+          version_number: number;
+          status: "draft" | "published";
+          exported_docx_url: string | null;
+          exported_pdf_url: string | null;
+          generated_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["dcp_documents"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["dcp_documents"]["Row"]>;
+        Relationships: [];
+      };
+      dcp_sections: {
+        Row: {
+          id: string;
+          dcp_document_id: string;
+          section_key: string;
+          content: { texto: string };
+          is_generated: boolean;
+          source_reference: Record<string, unknown> | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["dcp_sections"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["dcp_sections"]["Row"]>;
+        Relationships: [];
+      };
+      resumo_calculo_documents: {
+        Row: {
+          id: string;
+          cycle_id: string;
+          narrative_text: string;
+          exported_docx_url: string | null;
+          exported_pdf_url: string | null;
+          generated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["resumo_calculo_documents"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["resumo_calculo_documents"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: {
       production_period_summary: {

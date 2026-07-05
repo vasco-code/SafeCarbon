@@ -313,3 +313,48 @@ form select {
 .project-nav-list a:hover {
   text-decoration: underline;
 }
+
+.dcp-section {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: 10px;
+}
+
+.dcp-section h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.dcp-generated-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--sc-accent);
+  border: 1px solid var(--sc-accent);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+}
+
+.dcp-generated-content {
+  white-space: pre-wrap;
+  font-family: inherit;
+  color: var(--sc-text);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.dcp-section textarea {
+  width: 100%;
+  background: var(--sc-bg);
+  border: 1px solid var(--sc-border);
+  color: var(--sc-text);
+  border-radius: 6px;
+  padding: 0.6rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
