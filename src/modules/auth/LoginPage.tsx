@@ -57,7 +57,22 @@ export function LoginPage() {
           {submitting ? "Entrando..." : "Entrar"}
         </button>
       </form>
-      <Link to="/esqueci-senha">Esqueci minha senha</Link>
+      <div style={{ marginTop: "1.5rem", textAlign: "center" }}>
+        <Link
+          to="/esqueci-senha"
+          style={{
+            color: "var(--sc-primary)",
+            textDecoration: "none",
+            fontSize: "0.9375rem",
+            fontWeight: 500,
+            transition: "opacity 0.2s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.7")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+        >
+          Esqueci minha senha
+        </Link>
+      </div>
     </AuthLayout>
   );
 }

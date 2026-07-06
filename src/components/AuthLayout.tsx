@@ -47,11 +47,11 @@ export function AuthLayout({ children }: { children: ReactNode }) {
               <img
                 src={branding.logo_url}
                 alt="SafeCarbon"
-                style={{ maxWidth: "26px", maxHeight: "26px", objectFit: "contain" }}
+                style={{ maxWidth: "64px", maxHeight: "64px", objectFit: "contain" }}
               />
             ) : (
               <span className="app-logo-mark">
-                <Leaf size={15} strokeWidth={2.25} />
+                <Leaf size={32} strokeWidth={2.25} />
               </span>
             )}
             <strong>SafeCarbon</strong>
