@@ -68,7 +68,6 @@ const FULL_BLEED_PREFIXES = ["/verificar/", "/login", "/esqueci-senha", "/redefi
 // composição toda lia como "genérica" mesmo com o resto do design tokenizado.
 function AppShell() {
   const { pathname } = useLocation();
-  useBranding();
   const isFullBleed = FULL_BLEED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
   if (isFullBleed) {
@@ -85,10 +84,15 @@ function AppShell() {
   );
 }
 
+function AppProvider() {
+  useBranding();
+  return <AppShell />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
-      <AppShell />
+      <AppProvider />
     </BrowserRouter>
   );
 }
