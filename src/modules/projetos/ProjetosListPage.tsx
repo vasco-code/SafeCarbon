@@ -302,28 +302,26 @@ export function ProjetosListPage() {
               <tr key={p.id}>
                 <td>{p.name}</td>
                 <td>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    {p.organizations_developer?.logo_url ? (
-                      <img
-                        src={p.organizations_developer.logo_url}
-                        alt={p.organizations_developer.name}
-                        style={{ maxWidth: "48px", maxHeight: "32px", objectFit: "contain" }}
-                      />
-                    ) : null}
+                  {p.organizations_developer?.logo_url ? (
+                    <img
+                      src={p.organizations_developer.logo_url}
+                      alt={p.organizations_developer.name}
+                      style={{ maxWidth: "48px", maxHeight: "40px", objectFit: "contain" }}
+                    />
+                  ) : (
                     <span>{p.organizations_developer?.name}</span>
-                  </div>
+                  )}
                 </td>
                 <td>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    {p.organizations_proponent?.logo_url ? (
-                      <img
-                        src={p.organizations_proponent.logo_url}
-                        alt={p.organizations_proponent.name}
-                        style={{ maxWidth: "48px", maxHeight: "32px", objectFit: "contain" }}
-                      />
-                    ) : null}
+                  {p.organizations_proponent?.logo_url ? (
+                    <img
+                      src={p.organizations_proponent.logo_url}
+                      alt={p.organizations_proponent.name}
+                      style={{ maxWidth: "48px", maxHeight: "40px", objectFit: "contain" }}
+                    />
+                  ) : (
                     <span>{p.organizations_proponent?.name}</span>
-                  </div>
+                  )}
                 </td>
                 <td>
                   <span className="badge badge-neutral">{p.status}</span>

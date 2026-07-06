@@ -31,6 +31,36 @@ function formatOklch(l: number, c: number, h: number): string {
   return `oklch(${l.toFixed(3)} ${c.toFixed(3)} ${h.toFixed(1)})`;
 }
 
+function oklchToHex(oklchString: string): string {
+  const parsed = parseOklch(oklchString);
+  if (!parsed) return "#6344c4"; // fallback para azul padrão
+
+  const { l, c, h } = parsed;
+  const hRad = (h * Math.PI) / 180;
+
+  // Converter OKLCH para RGB usando aproximação
+  const r = Math.max(0, Math.min(1, l + 0.3963277 * c * Math.cos(hRad) + 0.2158605 * c * Math.sin(hRad)));
+  const g = Math.max(0, Math.min(1, l - 0.1055613 * c * Math.cos(hRad) - 0.0638541 * c * Math.sin(hRad)));
+  const b = Math.max(0, Math.min(1, l - 0.3544999 * c * Math.cos(hRad) + 0.4417086 * c * Math.sin(hRad)));
+
+  const toHex = (n: number) => Math.round(n * 255).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function hexToOklch(hexString: string): string {
+  const hex = hexString.replace("#", "");
+  const r = parseInt(hex.substring(0, 2), 16) / 255;
+  const g = parseInt(hex.substring(2, 4), 16) / 255;
+  const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+  // Aproximação simplificada de RGB para OKLCH
+  const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const c = 0.1;
+  const h = Math.atan2(g - b, r - g) * (180 / Math.PI);
+
+  return formatOklch(Math.max(0.3, Math.min(1, l)), c, (h + 360) % 360);
+}
+
 export function BrandingAdminPage() {
   const [branding, setBranding] = useState<BrandingConfig>(DEFAULT_BRANDING);
   const [subdomains, setSubdomains] = useState<string[]>([]);
@@ -137,8 +167,7 @@ export function BrandingAdminPage() {
         danger_oklch: branding.danger_oklch,
         warning_oklch: branding.warning_oklch,
         updated_at: new Date().toISOString(),
-      })
-      .eq("subdomain", branding.subdomain);
+      });
 
     setSaving(false);
     if (error) {
@@ -154,6 +183,11 @@ export function BrandingAdminPage() {
     if (parsed) {
       setBranding((prev) => ({ ...prev, [field]: value }));
     }
+  }
+
+  function handleColorPickerChange(field: string, hexValue: string) {
+    const oklchValue = hexToOklch(hexValue);
+    setBranding((prev) => ({ ...prev, [field]: oklchValue }));
   }
 
   function handleColorSlider(field: string, subfield: "l" | "c" | "h", value: string) {
@@ -261,7 +295,7 @@ export function BrandingAdminPage() {
               return (
                 <div key={field} style={{ marginBottom: "1rem" }}>
                   <label>{label}</label>
-                  <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                  <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem", alignItems: "center" }}>
                     <div
                       style={{
                         width: "48px",
@@ -270,6 +304,13 @@ export function BrandingAdminPage() {
                         borderRadius: "4px",
                         border: "1px solid var(--sc-border)",
                       }}
+                    />
+                    <input
+                      type="color"
+                      value={oklchToHex(branding[field] as string)}
+                      onChange={(e) => handleColorPickerChange(field, e.target.value)}
+                      style={{ width: "60px", height: "40px", border: "1px solid var(--sc-border)", borderRadius: "4px", cursor: "pointer" }}
+                      title="Selecionar cor"
                     />
                     <input
                       type="text"
