@@ -250,15 +250,14 @@ export function OrganizacoesPage() {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button type="submit" disabled={saving || !formData.name.trim()} className="btn-primary">
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "1.25rem" }}>
+            <button type="submit" disabled={saving || !formData.name.trim()} className="btn-primary" style={{ marginTop: 0 }}>
               {saving ? "Salvando..." : editingId ? "Atualizar" : "Criar"}
             </button>
             <button
               type="button"
               onClick={() => resetForm()}
               disabled={saving}
-              className="btn-secondary"
             >
               Cancelar
             </button>
