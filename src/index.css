@@ -525,6 +525,7 @@ form {
   text-align: left;
   padding: 0.55rem 0.75rem;
   border-bottom: 1px solid var(--sc-border);
+  vertical-align: middle;
 }
 
 .app-main tbody tr {
