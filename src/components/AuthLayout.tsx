@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Leaf, ShieldCheck, Link2, MapPinned } from "lucide-react";
+import { useBranding } from "@/hooks/useBranding";
 
 const FEATURES = [
   { icon: ShieldCheck, label: "MRV auditável, do inventário ao ciclo de verificação" },
@@ -8,13 +9,23 @@ const FEATURES = [
 ];
 
 export function AuthLayout({ children }: { children: ReactNode }) {
+  const { branding } = useBranding();
+
   return (
     <div className="auth-layout">
       <div className="auth-layout-brand">
         <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginBottom: "1rem" }}>
-          <span className="auth-layout-logo">
-            <Leaf size={22} strokeWidth={2.25} />
-          </span>
+          {branding.logo_url ? (
+            <img
+              src={branding.logo_url}
+              alt="SafeCarbon"
+              style={{ maxWidth: "44px", maxHeight: "44px", objectFit: "contain" }}
+            />
+          ) : (
+            <span className="auth-layout-logo">
+              <Leaf size={22} strokeWidth={2.25} />
+            </span>
+          )}
           <h2 style={{ margin: 0, fontSize: "1.125rem" }}>SafeCarbon</h2>
         </div>
         <div style={{ fontSize: "0.8125rem", opacity: 0.7, marginBottom: "0.5rem" }}>Powered by</div>
@@ -32,9 +43,17 @@ export function AuthLayout({ children }: { children: ReactNode }) {
       <div className="auth-layout-form">
         <div className="auth-layout-form-inner">
           <div className="app-logo auth-layout-form-logo">
-            <span className="app-logo-mark">
-              <Leaf size={15} strokeWidth={2.25} />
-            </span>
+            {branding.logo_url ? (
+              <img
+                src={branding.logo_url}
+                alt="SafeCarbon"
+                style={{ maxWidth: "26px", maxHeight: "26px", objectFit: "contain" }}
+              />
+            ) : (
+              <span className="app-logo-mark">
+                <Leaf size={15} strokeWidth={2.25} />
+              </span>
+            )}
             <strong>SafeCarbon</strong>
           </div>
           {children}

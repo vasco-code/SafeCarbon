@@ -6,13 +6,22 @@ import { useBranding } from "@/hooks/useBranding";
 
 function Header() {
   const { session, user, canManageUsers, signOut } = useAuth();
+  const { branding } = useBranding();
 
   return (
     <header className="app-header">
       <Link to="/projetos" className="app-logo">
-        <span className="app-logo-mark">
-          <Leaf size={15} strokeWidth={2.25} />
-        </span>
+        {branding.logo_url ? (
+          <img
+            src={branding.logo_url}
+            alt="SafeCarbon"
+            style={{ maxWidth: "26px", maxHeight: "26px", objectFit: "contain" }}
+          />
+        ) : (
+          <span className="app-logo-mark">
+            <Leaf size={15} strokeWidth={2.25} />
+          </span>
+        )}
         <strong>SafeCarbon</strong>
       </Link>
       {session && (
