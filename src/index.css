@@ -1045,12 +1045,17 @@ form {
   color: var(--sc-muted);
 }
 
+/* Bloco, não inline: um card de ~250px só tem ~155px pra texto (menos
+   ícone/padding) — "83.231,05 tCO2e" numa linha a 28px não cabe e a unidade
+   vazava pra fora do card (sem espaço quebrável entre número e unidade,
+   media que não dava nem pra quebrar linha, só vazar). Unidade sempre numa
+   linha própria evita depender de quanto o número tem de dígitos. */
 .metric-unit {
+  display: block;
   font-size: var(--sc-text-sm);
   font-weight: 600;
   color: var(--sc-muted);
-  margin-left: 0.3rem;
-  white-space: nowrap;
+  margin-top: 0.15rem;
 }
 
 .report-kpi-card {
