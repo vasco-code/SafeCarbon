@@ -42,19 +42,19 @@ export function AuthLayout({ children }: { children: ReactNode }) {
       </div>
       <div className="auth-layout-form">
         <div className="auth-layout-form-inner">
-          <div className="app-logo auth-layout-form-logo">
+          <div className="app-logo auth-layout-form-logo" style={{ justifyContent: "center", flexDirection: "column", gap: "0.75rem" }}>
             {branding.logo_url ? (
               <img
                 src={branding.logo_url}
                 alt="SafeCarbon"
-                style={{ maxWidth: "64px", maxHeight: "64px", objectFit: "contain" }}
+                style={{ maxWidth: "100px", maxHeight: "100px", objectFit: "contain", margin: "0 auto" }}
               />
             ) : (
               <span className="app-logo-mark">
-                <Leaf size={32} strokeWidth={2.25} />
+                <Leaf size={48} strokeWidth={2.25} />
               </span>
             )}
-            <strong>SafeCarbon</strong>
+            <strong style={{ fontSize: "1.375rem", textAlign: "center" }}>SafeCarbon</strong>
           </div>
           {children}
         </div>
