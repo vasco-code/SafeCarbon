@@ -41,14 +41,18 @@ function Header() {
   );
 }
 
-// Páginas públicas de verificação (QR code) são "brand-lite" e full-bleed —
-// não usam o chrome do app interno (header/nav), mesmo que o visitante tenha
-// uma sessão autenticada aberta em outra aba.
+const FULL_BLEED_PREFIXES = ["/verificar/", "/login", "/esqueci-senha", "/redefinir-senha"];
+
+// Páginas públicas de verificação (QR code) e as telas de autenticação são
+// "brand-lite" e full-bleed — não usam o chrome do app interno (header/nav).
+// Sem isso, a tela de login herdava o header do app (com só o logo, sem
+// nada mais, já que não há sessão) sobre uma página em branco — a
+// composição toda lia como "genérica" mesmo com o resto do design tokenizado.
 function AppShell() {
   const { pathname } = useLocation();
-  const isPublicVerificationPage = pathname.startsWith("/verificar/");
+  const isFullBleed = FULL_BLEED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
-  if (isPublicVerificationPage) {
+  if (isFullBleed) {
     return <AppRoutes />;
   }
 

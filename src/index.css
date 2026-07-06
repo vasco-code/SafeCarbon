@@ -303,19 +303,131 @@ button:disabled {
   cursor: not-allowed;
 }
 
-.auth-card {
-  max-width: 360px;
-  margin: 3rem auto;
-  padding: 2rem;
-  background: var(--sc-bg);
-  border: 1px solid var(--sc-border);
-  border-radius: 12px;
-  box-shadow: var(--sc-shadow);
+/* Tela de autenticação — painel dividido: identidade de marca à esquerda,
+   formulário à direita. Full-bleed (sem o header/nav do app interno — ver
+   App.tsx), para não repetir a composição "logo solto + card flutuando no
+   vazio" que lia como genérica mesmo estando matematicamente centralizada. */
+.auth-layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
 }
 
-.auth-card h1 {
+.auth-layout-brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  padding: 4rem;
+  background: linear-gradient(160deg, var(--sc-primary) 0%, var(--sc-primary-dark) 100%);
+  color: #fff;
+  overflow: hidden;
+}
+
+.auth-layout-brand::before,
+.auth-layout-brand::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: oklch(1 0 0 / 0.06);
+}
+
+.auth-layout-brand::before {
+  width: 480px;
+  height: 480px;
+  top: -140px;
+  right: -180px;
+}
+
+.auth-layout-brand::after {
+  width: 360px;
+  height: 360px;
+  bottom: -160px;
+  left: -120px;
+  background: oklch(1 0 0 / 0.05);
+}
+
+.auth-layout-logo {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: oklch(1 0 0 / 0.14);
+  margin-bottom: 1.5rem;
+}
+
+.auth-layout-brand h1 {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 0.75rem;
+  font-size: 1.9rem;
+}
+
+.auth-layout-brand > p {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 2.75rem;
+  max-width: 36ch;
+  line-height: 1.6;
+  color: oklch(1 0 0 / 0.82);
+}
+
+.auth-layout-features {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auth-layout-feature {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: var(--sc-text-sm);
+  color: oklch(1 0 0 / 0.92);
+}
+
+.auth-layout-feature svg {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.auth-layout-form {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: var(--sc-bg);
+}
+
+.auth-layout-form-inner {
+  width: 100%;
+  max-width: 360px;
+}
+
+.auth-layout-form-logo {
+  margin-bottom: 2rem;
+}
+
+.auth-layout-form-inner h1 {
   margin: 0 0 1.5rem;
   font-size: var(--sc-text-xl);
+}
+
+@media (max-width: 860px) {
+  .auth-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-layout-brand {
+    display: none;
+  }
 }
 
 form {
@@ -911,10 +1023,15 @@ form {
   border: 1px solid var(--sc-border);
 }
 
-/* Relatório de emissões — grid de cartões-resumo (KPI). */
+/* Relatório de emissões — grid de cartões-resumo (KPI). minmax(0, 1fr), não
+   só 1fr: sem o mínimo explícito em 0, cada coluna herda o min-content do
+   seu próprio texto como piso, e colunas com texto mais longo (ex.: "Redução
+   líquida creditada") ficam mais largas que as outras mesmo com 1fr igual —
+   foi exatamente essa desigualdade de largura que causava quebras de linha
+   diferentes por cartão e o desalinhamento vertical entre eles. */
 .report-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: stretch;
   gap: 1rem;
   margin: 1.5rem 0 2rem;
@@ -923,13 +1040,33 @@ form {
 .report-kpi-label {
   margin: 0 0 0.35rem;
   font-size: var(--sc-text-sm);
+  line-height: 1.3;
+  min-height: 2.6em;
   color: var(--sc-muted);
+}
+
+.metric-unit {
+  font-size: var(--sc-text-sm);
+  font-weight: 600;
+  color: var(--sc-muted);
+  margin-left: 0.3rem;
+  white-space: nowrap;
 }
 
 .report-kpi-card {
   display: flex;
   align-items: flex-start;
   gap: 0.85rem;
+}
+
+/* `.card + .card` (pensado para cards empilhados verticalmente, especificidade
+   0,2,0) aplica margin-top nos cards 2-4 deste grid horizontal, já que são
+   `.card` precedidos por outro `.card` — o grid `stretch` então subtrai essa
+   margem da altura deles, e só eles ficam mais baixos que o primeiro cartão
+   (que não tem sibling anterior). Precisa de especificidade maior (0,3,0)
+   para vencer o reset. */
+.report-kpi-grid .card.report-kpi-card {
+  margin-top: 0;
 }
 
 .report-kpi-icon {

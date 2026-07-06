@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { AuthLayout } from "@/components/AuthLayout";
 
 export function ForgotPasswordPage() {
   const { requestPasswordReset } = useAuth();
@@ -24,16 +25,16 @@ export function ForgotPasswordPage() {
 
   if (sent) {
     return (
-      <section className="auth-card">
+      <AuthLayout>
         <h1>Verifique seu e-mail</h1>
         <p>Se {email} estiver cadastrado, enviamos um link para redefinir a senha.</p>
         <Link to="/login">Voltar para o login</Link>
-      </section>
+      </AuthLayout>
     );
   }
 
   return (
-    <section className="auth-card">
+    <AuthLayout>
       <h1>Esqueci minha senha</h1>
       <form onSubmit={handleSubmit}>
         <label htmlFor="email">E-mail</label>
@@ -53,6 +54,6 @@ export function ForgotPasswordPage() {
         </button>
       </form>
       <Link to="/login">Voltar para o login</Link>
-    </section>
+    </AuthLayout>
   );
 }

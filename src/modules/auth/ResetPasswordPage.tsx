@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PasswordInput } from "@/components/PasswordInput";
+import { AuthLayout } from "@/components/AuthLayout";
 
 export function ResetPasswordPage() {
   const { session, loading, updatePassword } = useAuth();
@@ -40,16 +41,16 @@ export function ResetPasswordPage() {
 
   if (!session) {
     return (
-      <section className="auth-card">
+      <AuthLayout>
         <h1>Link inválido ou expirado</h1>
         <p>Solicite um novo link de redefinição de senha.</p>
         <Link to="/esqueci-senha">Esqueci minha senha</Link>
-      </section>
+      </AuthLayout>
     );
   }
 
   return (
-    <section className="auth-card">
+    <AuthLayout>
       <h1>{isInvite ? "Defina sua senha" : "Redefinir senha"}</h1>
       <form onSubmit={handleSubmit}>
         <label htmlFor="password">Nova senha</label>
@@ -76,6 +77,6 @@ export function ResetPasswordPage() {
           {submitting ? "Salvando..." : "Salvar senha"}
         </button>
       </form>
-    </section>
+    </AuthLayout>
   );
 }

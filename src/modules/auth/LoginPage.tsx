@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PasswordInput } from "@/components/PasswordInput";
+import { AuthLayout } from "@/components/AuthLayout";
 
 export function LoginPage() {
   const { session, signIn } = useAuth();
@@ -28,7 +29,7 @@ export function LoginPage() {
   }
 
   return (
-    <section className="auth-card">
+    <AuthLayout>
       <h1>Entrar</h1>
       <form onSubmit={handleSubmit}>
         <label htmlFor="email">E-mail</label>
@@ -57,6 +58,6 @@ export function LoginPage() {
         </button>
       </form>
       <Link to="/esqueci-senha">Esqueci minha senha</Link>
-    </section>
+    </AuthLayout>
   );
 }

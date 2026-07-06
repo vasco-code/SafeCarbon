@@ -145,21 +145,30 @@ export function RelatorioEmissoesPage() {
           <span className="report-kpi-icon"><Cloud size={17} /></span>
           <div>
             <p className="report-kpi-label">Emissões inventariadas</p>
-            <p className="metric">{totalEmitted.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e</p>
+            <p className="metric">
+              {totalEmitted.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
+              <span className="metric-unit">tCO₂e</span>
+            </p>
           </div>
         </div>
         <div className="card report-kpi-card">
           <span className="report-kpi-icon"><Recycle size={17} /></span>
           <div>
             <p className="report-kpi-label">Redução líquida creditada</p>
-            <p className="metric">{totalCredited.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e</p>
+            <p className="metric">
+              {totalCredited.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
+              <span className="metric-unit">tCO₂e</span>
+            </p>
           </div>
         </div>
         <div className="card report-kpi-card">
           <span className="report-kpi-icon"><BadgeCheck size={17} /></span>
           <div>
             <p className="report-kpi-label">Créditos aposentados</p>
-            <p className="metric">{totalRetiredTco2e.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e</p>
+            <p className="metric">
+              {totalRetiredTco2e.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
+              <span className="metric-unit">tCO₂e</span>
+            </p>
           </div>
         </div>
         <div className="card report-kpi-card">
