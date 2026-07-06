@@ -11,10 +11,14 @@ export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="auth-layout">
       <div className="auth-layout-brand">
-        <span className="auth-layout-logo">
-          <Leaf size={22} strokeWidth={2.25} />
-        </span>
-        <h1>SafeCarbon</h1>
+        <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginBottom: "1rem" }}>
+          <span className="auth-layout-logo">
+            <Leaf size={22} strokeWidth={2.25} />
+          </span>
+          <h2 style={{ margin: 0, fontSize: "1.125rem" }}>SafeCarbon</h2>
+        </div>
+        <div style={{ fontSize: "0.8125rem", opacity: 0.7, marginBottom: "0.5rem" }}>Powered by</div>
+        <h3 style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 600, marginBottom: "1rem" }}>Safe Trace</h3>
         <p>Plataforma de MRV e tokenização de créditos de carbono — da produção em campo ao token verificável.</p>
         <div className="auth-layout-features">
           {FEATURES.map((f) => (

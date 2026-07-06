@@ -24,6 +24,7 @@ export interface Database {
             | "buyer";
           tax_id: string | null;
           created_by: string | null;
+          logo_url: string | null;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["organizations"]["Row"]>;
@@ -365,6 +366,24 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["project_sites"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["project_sites"]["Row"]>;
+        Relationships: [];
+      };
+      branding_configs: {
+        Row: {
+          id: string;
+          subdomain: string;
+          logo_url: string | null;
+          favicon_url: string | null;
+          primary_oklch: string;
+          accent_oklch: string;
+          success_oklch: string;
+          danger_oklch: string;
+          warning_oklch: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["branding_configs"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["branding_configs"]["Row"]>;
         Relationships: [];
       };
     };

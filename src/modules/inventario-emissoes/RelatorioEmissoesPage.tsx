@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Cloud, Recycle, BadgeCheck, Link2, BarChart3 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { ReportHeader } from "@/components/ReportHeader";
 
 interface YearRow {
   year: number;
@@ -29,6 +30,10 @@ const BATCH_STATUS_LABELS: Record<string, string> = {
 export function RelatorioEmissoesPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [projectName, setProjectName] = useState("");
+  const [developerName, setDeveloperName] = useState("");
+  const [developerLogoUrl, setDeveloperLogoUrl] = useState<string | null>(null);
+  const [proponentName, setProponentName] = useState("");
+  const [proponentLogoUrl, setProponentLogoUrl] = useState<string | null>(null);
   const [years, setYears] = useState<YearRow[]>([]);
   const [tokens, setTokens] = useState<TokenRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +44,11 @@ export function RelatorioEmissoesPage() {
 
     async function load() {
       const [projectResult, inventoryResult, leakageResult, cyclesResult] = await Promise.all([
-        supabase.from("carbon_projects").select("name").eq("id", id).maybeSingle(),
+        supabase
+          .from("carbon_projects")
+          .select("name, developer_org_id, proponent_org_id")
+          .eq("id", id)
+          .maybeSingle(),
         supabase
           .from("emission_inventory_entries")
           .select("period_year, calculated_tco2e")
@@ -55,6 +64,26 @@ export function RelatorioEmissoesPage() {
       ]);
 
       setProjectName(projectResult.data?.name ?? "");
+
+      if (projectResult.data?.developer_org_id) {
+        const { data: devOrg } = await supabase
+          .from("organizations")
+          .select("name, logo_url")
+          .eq("id", projectResult.data.developer_org_id)
+          .maybeSingle();
+        setDeveloperName(devOrg?.name ?? "");
+        setDeveloperLogoUrl(devOrg?.logo_url ?? null);
+      }
+
+      if (projectResult.data?.proponent_org_id) {
+        const { data: propOrg } = await supabase
+          .from("organizations")
+          .select("name, logo_url")
+          .eq("id", projectResult.data.proponent_org_id)
+          .maybeSingle();
+        setProponentName(propOrg?.name ?? "");
+        setProponentLogoUrl(propOrg?.logo_url ?? null);
+      }
 
       const byYear = new Map<number, YearRow>();
       function ensureYear(year: number) {
@@ -139,6 +168,13 @@ export function RelatorioEmissoesPage() {
         <BarChart3 size={20} /> Relatório de Emissões
       </h2>
       <p>{projectName} — consolidado de inventário, vazamento e créditos por ano.</p>
+
+      <ReportHeader
+        developerLogoUrl={developerLogoUrl}
+        developerName={developerName}
+        proponentLogoUrl={proponentLogoUrl}
+        proponentName={proponentName}
+      />
 
       <div className="report-kpi-grid">
         <div className="card report-kpi-card">

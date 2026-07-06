@@ -2,6 +2,7 @@ import { BrowserRouter, Link, NavLink, useLocation } from "react-router-dom";
 import { Leaf } from "lucide-react";
 import { AppRoutes } from "@/routes";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBranding } from "@/hooks/useBranding";
 
 function Header() {
   const { session, user, canManageUsers, signOut } = useAuth();
@@ -24,9 +25,14 @@ function Header() {
               Metodologias
             </NavLink>
             {canManageUsers && (
-              <NavLink to="/usuarios" className={({ isActive }) => (isActive ? "active" : "")}>
-                Usuários
-              </NavLink>
+              <>
+                <NavLink to="/usuarios" className={({ isActive }) => (isActive ? "active" : "")}>
+                  Usuários
+                </NavLink>
+                <NavLink to="/admin/branding" className={({ isActive }) => (isActive ? "active" : "")}>
+                  Branding
+                </NavLink>
+              </>
             )}
           </nav>
           <div className="app-header-user">
@@ -50,6 +56,7 @@ const FULL_BLEED_PREFIXES = ["/verificar/", "/login", "/esqueci-senha", "/redefi
 // composição toda lia como "genérica" mesmo com o resto do design tokenizado.
 function AppShell() {
   const { pathname } = useLocation();
+  useBranding();
   const isFullBleed = FULL_BLEED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
   if (isFullBleed) {

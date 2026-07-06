@@ -6,6 +6,10 @@ interface ProjectRow {
   id: string;
   name: string;
   status: string;
+  proponent_org_id: string;
+  developer_org_id: string;
+  organizations_proponent: { name: string; logo_url: string | null } | null;
+  organizations_developer: { name: string; logo_url: string | null } | null;
 }
 
 interface OrgOption {
@@ -140,14 +144,17 @@ export function ProjetosListPage() {
 
   async function loadData() {
     const [projectsResult, orgsResult, methodologyResult] = await Promise.all([
-      supabase.from("carbon_projects").select("id, name, status").order("created_at", { ascending: false }),
+      supabase
+        .from("carbon_projects")
+        .select("id, name, status, proponent_org_id, developer_org_id, organizations_proponent:proponent_org_id(name, logo_url), organizations_developer:developer_org_id(name, logo_url)")
+        .order("created_at", { ascending: false }),
       supabase.from("organizations").select("id, name").order("name"),
       supabase
         .from("methodology_versions")
         .select("id, version_label, methodologies(name)")
         .eq("status", "published"),
     ]);
-    setProjects(projectsResult.data ?? []);
+    setProjects((projectsResult.data ?? []) as unknown as ProjectRow[]);
     setOrgs(orgsResult.data ?? []);
     setMethodologyVersions((methodologyResult.data ?? []) as unknown as MethodologyVersionOption[]);
     setLoading(false);
@@ -284,6 +291,8 @@ export function ProjetosListPage() {
           <thead>
             <tr>
               <th>Projeto</th>
+              <th>Desenvolvedor</th>
+              <th>Proponente</th>
               <th>Status</th>
               <th></th>
             </tr>
@@ -292,6 +301,30 @@ export function ProjetosListPage() {
             {projects.map((p) => (
               <tr key={p.id}>
                 <td>{p.name}</td>
+                <td>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    {p.organizations_developer?.logo_url ? (
+                      <img
+                        src={p.organizations_developer.logo_url}
+                        alt={p.organizations_developer.name}
+                        style={{ maxWidth: "48px", maxHeight: "32px", objectFit: "contain" }}
+                      />
+                    ) : null}
+                    <span>{p.organizations_developer?.name}</span>
+                  </div>
+                </td>
+                <td>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    {p.organizations_proponent?.logo_url ? (
+                      <img
+                        src={p.organizations_proponent.logo_url}
+                        alt={p.organizations_proponent.name}
+                        style={{ maxWidth: "48px", maxHeight: "32px", objectFit: "contain" }}
+                      />
+                    ) : null}
+                    <span>{p.organizations_proponent?.name}</span>
+                  </div>
+                </td>
                 <td>
                   <span className="badge badge-neutral">{p.status}</span>
                 </td>
