@@ -37,16 +37,18 @@ export function useBranding() {
   useEffect(() => {
     async function loadBranding() {
       const subdomain = getSubdomainFromHostname();
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("branding_configs")
         .select("*")
         .eq("subdomain", subdomain)
         .single();
 
       if (data) {
+        console.log("Branding loaded:", data);
         setBranding(data as BrandingConfig);
         applyBrandingVars(data as BrandingConfig);
       } else {
+        console.log("No branding config found for subdomain:", subdomain, error);
         applyBrandingVars(DEFAULT_BRANDING);
       }
       setLoading(false);
