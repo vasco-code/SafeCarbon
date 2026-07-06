@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 
 interface ProjectRow {
@@ -124,6 +124,7 @@ function OrgPicker({
 }
 
 export function ProjetosListPage() {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [orgs, setOrgs] = useState<OrgOption[]>([]);
   const [methodologyVersions, setMethodologyVersions] = useState<MethodologyVersionOption[]>([]);
@@ -295,7 +296,9 @@ export function ProjetosListPage() {
                   <span className="badge badge-neutral">{p.status}</span>
                 </td>
                 <td>
-                  <Link to={`/projetos/${p.id}`}>Abrir</Link>
+                  <button type="button" className="btn-primary" onClick={() => navigate(`/projetos/${p.id}`)}>
+                    Abrir
+                  </button>
                 </td>
               </tr>
             ))}

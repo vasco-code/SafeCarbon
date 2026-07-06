@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { BookOpen, Plus } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -167,7 +167,9 @@ export function MetodologiaListPage() {
                   <span className={`badge ${STATUS_BADGE[v.status] ?? "badge-neutral"}`}>{v.status}</span>
                 </td>
                 <td>
-                  <Link to={`/metodologias/${v.id}`}>Abrir</Link>
+                  <button type="button" className="btn-primary" onClick={() => navigate(`/metodologias/${v.id}`)}>
+                    Abrir
+                  </button>
                 </td>
               </tr>
             ))}
