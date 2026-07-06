@@ -5,6 +5,7 @@ import { ForgotPasswordPage } from "@/modules/auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/modules/auth/ResetPasswordPage";
 import { ContaPage } from "@/modules/conta/ContaPage";
 import { UsuariosPage } from "@/modules/admin/UsuariosPage";
+import { OrganizacoesPage } from "@/modules/admin/OrganizacoesPage";
 import { BrandingAdminPage } from "@/modules/admin/BrandingAdminPage";
 import { MetodologiaListPage } from "@/modules/metodologia/MetodologiaListPage";
 import { MetodologiaDetailPage } from "@/modules/metodologia/MetodologiaDetailPage";
@@ -35,6 +36,7 @@ export function AppRoutes() {
 
         <Route path="/conta" element={<ContaPage />} />
         <Route path="/usuarios" element={<UsuariosPage />} />
+        <Route path="/admin/organizacoes" element={<OrganizacoesPage />} />
         <Route path="/admin/branding" element={<BrandingAdminPage />} />
 
         <Route path="/metodologias" element={<MetodologiaListPage />} />
