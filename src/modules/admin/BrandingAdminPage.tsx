@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Palette } from "lucide-react";
+import { Palette, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { BrandingConfig } from "@/hooks/useBranding";
 
@@ -36,7 +36,10 @@ export function BrandingAdminPage() {
   const [subdomains, setSubdomains] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newSubdomain, setNewSubdomain] = useState("");
 
   const currentSubdomain = getSubdomainFromHostname();
   const [selectedSubdomain, setSelectedSubdomain] = useState(currentSubdomain);
@@ -69,6 +72,52 @@ export function BrandingAdminPage() {
     setSubdomains(Array.from(domains).sort());
 
     setLoading(false);
+  }
+
+  async function handleCreateSubdomain(event: FormEvent) {
+    event.preventDefault();
+    if (!newSubdomain.trim()) {
+      setMessage("Digite um subdomínio válido.");
+      return;
+    }
+    setSaving(true);
+    setMessage(null);
+
+    const { error } = await supabase.from("branding_configs").insert({
+      ...DEFAULT_BRANDING,
+      subdomain: newSubdomain.trim(),
+      updated_at: new Date().toISOString(),
+    });
+
+    setSaving(false);
+    if (error) {
+      setMessage(`Erro: ${error.message}`);
+    } else {
+      setNewSubdomain("");
+      setShowCreateForm(false);
+      setSelectedSubdomain(newSubdomain.trim());
+      await loadBranding();
+    }
+  }
+
+  async function handleDeleteSubdomain() {
+    if (selectedSubdomain === "default") {
+      setMessage("Não é possível deletar a configuração 'default'.");
+      return;
+    }
+    if (!confirm(`Deletar configuração de branding para '${selectedSubdomain}'?`)) return;
+
+    setDeleting(true);
+    const { error } = await supabase.from("branding_configs").delete().eq("subdomain", selectedSubdomain);
+    setDeleting(false);
+
+    if (error) {
+      setMessage(`Erro: ${error.message}`);
+    } else {
+      setSelectedSubdomain("default");
+      await loadBranding();
+      setMessage("Configuração deletada com sucesso.");
+    }
   }
 
   async function handleSave(event: FormEvent) {
@@ -121,6 +170,8 @@ export function BrandingAdminPage() {
 
   if (loading) return <p>Carregando...</p>;
 
+  if (loading) return <p>Carregando...</p>;
+
   return (
     <section>
       <h1 className="module-heading">
@@ -128,20 +179,61 @@ export function BrandingAdminPage() {
       </h1>
       <p>Customizar cores e logos da plataforma por subdomínio (admin apenas).</p>
 
-      <div style={{ marginBottom: "1.5rem" }}>
-        <label htmlFor="subdomain-select">Subdomínio</label>
-        <select
-          id="subdomain-select"
-          value={selectedSubdomain}
-          onChange={(e) => setSelectedSubdomain(e.target.value)}
+      <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", marginBottom: "1.5rem" }}>
+        <div style={{ flex: 1 }}>
+          <label htmlFor="subdomain-select">Subdomínio</label>
+          <select
+            id="subdomain-select"
+            value={selectedSubdomain}
+            onChange={(e) => setSelectedSubdomain(e.target.value)}
+          >
+            {subdomains.map((sub) => (
+              <option key={sub} value={sub}>
+                {sub === "default" ? "Default (global)" : sub} {sub === currentSubdomain && "(atual)"}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={() => setShowCreateForm((v) => !v)}
+          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
         >
-          {subdomains.map((sub) => (
-            <option key={sub} value={sub}>
-              {sub === "default" ? "Default (global)" : sub}
-            </option>
-          ))}
-        </select>
+          <Plus size={16} />
+          {showCreateForm ? "Cancelar" : "Novo"}
+        </button>
+        {selectedSubdomain !== "default" && (
+          <button
+            type="button"
+            className="btn-icon-danger"
+            onClick={handleDeleteSubdomain}
+            disabled={deleting}
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+          >
+            <Trash2 size={16} />
+            {deleting ? "Deletando..." : "Deletar"}
+          </button>
+        )}
       </div>
+
+      {showCreateForm && (
+        <form onSubmit={handleCreateSubdomain} style={{ marginBottom: "1.5rem", padding: "1rem", backgroundColor: "var(--sc-surface)", borderRadius: "8px" }}>
+          <h3 style={{ marginTop: 0 }}>Adicionar novo subdomínio</h3>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <input
+              type="text"
+              placeholder="ex: premix, e2carbon, cliente"
+              value={newSubdomain}
+              onChange={(e) => setNewSubdomain(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button type="submit" disabled={saving || !newSubdomain.trim()}>
+              {saving ? "Criando..." : "Criar"}
+            </button>
+          </div>
+        </form>
+      )}
 
       <form onSubmit={handleSave}>
         <div
