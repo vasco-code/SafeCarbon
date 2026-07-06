@@ -299,13 +299,32 @@ export function BrandingAdminPage() {
                 <div key={field} style={{ marginBottom: "1rem" }}>
                   <label>{label}</label>
                   <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem", alignItems: "center" }}>
-                    <input
-                      type="color"
-                      value={oklchToHex(branding[field] as string)}
-                      onChange={(e) => handleColorPickerChange(field, e.target.value)}
-                      style={{ width: "48px", height: "48px", border: "none", borderRadius: "4px", cursor: "pointer", padding: "2px" }}
-                      title="Clique para selecionar cor"
-                    />
+                    <div style={{ position: "relative" }}>
+                      <div
+                        style={{
+                          width: "48px",
+                          height: "48px",
+                          backgroundColor: branding[field],
+                          borderRadius: "4px",
+                          border: "1px solid var(--sc-border)",
+                        }}
+                      />
+                      <input
+                        type="color"
+                        value={oklchToHex(branding[field] as string)}
+                        onChange={(e) => handleColorPickerChange(field, e.target.value)}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "48px",
+                          height: "48px",
+                          opacity: 0,
+                          cursor: "pointer",
+                        }}
+                        title="Clique para selecionar cor"
+                      />
+                    </div>
                     <input
                       type="text"
                       value={branding[field]}
