@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 interface OrgOption {
   id: string;
   name: string;
+  org_type?: string;
 }
 
 interface OrgMemberRow {
@@ -17,8 +18,9 @@ const MEMBER_ROLES = ["owner", "manager", "contributor", "viewer"] as const;
 type MemberRole = (typeof MEMBER_ROLES)[number];
 
 export function UsuariosPage() {
-  const { canManageUsers, user } = useAuth();
+  const { canManageUsers, user, memberships } = useAuth();
   const [orgs, setOrgs] = useState<OrgOption[]>([]);
+  const [selectedOrgType, setSelectedOrgType] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [orgId, setOrgId] = useState("");
   const [memberRole, setMemberRole] = useState<string>("viewer");
@@ -40,13 +42,15 @@ export function UsuariosPage() {
     if (!canManageUsers) return;
     supabase
       .from("organizations")
-      .select("id, name")
+      .select("id, name, org_type")
       .order("name")
       .then(({ data }) => {
         const rows = (data ?? []) as OrgOption[];
         setOrgs(rows);
         setOrgId((current) => {
           const next = current || rows[0]?.id || "";
+          const selectedOrg = rows.find((o) => o.id === next);
+          setSelectedOrgType(selectedOrg?.org_type || null);
           loadMembers(next);
           return next;
         });
@@ -55,6 +59,8 @@ export function UsuariosPage() {
 
   function handleOrgChange(value: string) {
     setOrgId(value);
+    const selectedOrg = orgs.find((o) => o.id === value);
+    setSelectedOrgType(selectedOrg?.org_type || null);
     loadMembers(value);
   }
 
@@ -84,6 +90,12 @@ export function UsuariosPage() {
   }
 
   async function handleRoleChange(memberUserId: string, newRole: MemberRole) {
+    // Validar: desenvolvedoras não podem criar/editar para owner
+    if (selectedOrgType === "project_developer" && newRole === "owner") {
+      setError("Organizações desenvolvedoras não podem ter usuários com papel de owner.");
+      return;
+    }
+
     const { error } = await supabase
       .from("org_members")
       .update({ member_role: newRole })
@@ -141,12 +153,24 @@ export function UsuariosPage() {
 
         <label htmlFor="new-user-role">Papel na organização</label>
         <select id="new-user-role" value={memberRole} onChange={(e) => setMemberRole(e.target.value)}>
-          {MEMBER_ROLES.map((role) => (
+          {MEMBER_ROLES.filter((role) => {
+            // Desenvolvedoras só podem criar: viewer, contributor, manager (sem owner)
+            if (selectedOrgType === "project_developer") {
+              return role !== "owner";
+            }
+            // Outros tipos de org podem criar todos os roles
+            return true;
+          }).map((role) => (
             <option key={role} value={role}>
               {role}
             </option>
           ))}
         </select>
+        {selectedOrgType === "project_developer" && (
+          <small style={{ color: "#666", marginTop: "0.25rem", display: "block" }}>
+            Organizações desenvolvedoras podem criar apenas: viewer, contributor e manager
+          </small>
+        )}
 
         {error && <p className="auth-error">{error}</p>}
         {message && <p className="auth-success">{message}</p>}
