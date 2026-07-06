@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { Receipt, FileWarning, FileCheck2 } from "lucide-react";
+import { FileDropzone } from "@/components/FileDropzone";
 import { supabase } from "@/lib/supabase";
 
 interface CommercializationDocument {
@@ -19,6 +21,12 @@ interface ParsedNfe {
   issueDate: string;
   buyerTaxId: string;
   quantityKg: number;
+}
+
+interface BatchItem {
+  fileName: string;
+  parsed: ParsedNfe | null;
+  error: string | null;
 }
 
 // Faz o parsing mínimo de uma NF-e (modelo 55) para extrair só o que
@@ -61,10 +69,9 @@ function parseNfeXml(xmlText: string): ParsedNfe {
 export function ComercializacaoPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [documents, setDocuments] = useState<CommercializationDocument[]>([]);
-  const [parsed, setParsed] = useState<ParsedNfe | null>(null);
+  const [batch, setBatch] = useState<BatchItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function loadDocuments() {
     if (!projectId) return;
@@ -80,39 +87,54 @@ export function ComercializacaoPage() {
     loadDocuments();
   }, [projectId]);
 
-  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  async function handleFiles(files: File[]) {
     setError(null);
-    setParsed(null);
-    try {
-      const text = await file.text();
-      setParsed(parseNfeXml(text));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao ler o arquivo.");
-    }
+    const items: BatchItem[] = await Promise.all(
+      files.map(async (file) => {
+        try {
+          const text = await file.text();
+          return { fileName: file.name, parsed: parseNfeXml(text), error: null };
+        } catch (err) {
+          return {
+            fileName: file.name,
+            parsed: null,
+            error: err instanceof Error ? err.message : "Erro ao ler o arquivo.",
+          };
+        }
+      }),
+    );
+    setBatch((prev) => [...prev, ...items]);
   }
 
-  async function handleConfirm() {
-    if (!projectId || !parsed) return;
+  const validCount = batch.filter((item) => item.parsed).length;
+
+  async function handleConfirmBatch() {
+    if (!projectId) return;
+    const valid = batch.filter((item): item is BatchItem & { parsed: ParsedNfe } => item.parsed !== null);
+    if (valid.length === 0) return;
     setSubmitting(true);
     setError(null);
-    const { error } = await supabase.from("commercialization_documents").insert({
-      project_id: projectId,
-      nfe_key: parsed.nfeKey,
-      nfe_number: parsed.nfeNumber || null,
-      issue_date: parsed.issueDate,
-      buyer_tax_id: parsed.buyerTaxId || null,
-      quantity_kg: parsed.quantityKg,
-    });
+    const { error } = await supabase.from("commercialization_documents").insert(
+      valid.map((item) => ({
+        project_id: projectId,
+        nfe_key: item.parsed.nfeKey,
+        nfe_number: item.parsed.nfeNumber || null,
+        issue_date: item.parsed.issueDate,
+        buyer_tax_id: item.parsed.buyerTaxId || null,
+        quantity_kg: item.parsed.quantityKg,
+      })),
+    );
     setSubmitting(false);
     if (error) {
       setError(error.message);
     } else {
-      setParsed(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setBatch([]);
       loadDocuments();
     }
+  }
+
+  function handleRemoveBatchItem(fileName: string) {
+    setBatch((prev) => prev.filter((item) => item.fileName !== fileName));
   }
 
   async function handleToggleCredited(doc: CommercializationDocument) {
@@ -153,23 +175,47 @@ export function ComercializacaoPage() {
 
   return (
     <section>
-      <h1>Comercialização</h1>
+      <h2 className="module-heading">
+        <Receipt size={20} /> Comercialização
+      </h2>
       <p>Notas fiscais importadas e fator de comercialização calculado.</p>
 
-      <label htmlFor="nfe-file">Importar NF-e (XML)</label>
-      <input id="nfe-file" ref={fileInputRef} type="file" accept=".xml" onChange={handleFileChange} />
+      <FileDropzone
+        accept=".xml"
+        multiple
+        onFiles={handleFiles}
+        label="Arraste os XML das NF-e aqui ou clique para escolher"
+        hint="Aceita várias notas de uma vez — cada arquivo é lido e validado antes de importar."
+      />
 
       {error && <p className="auth-error">{error}</p>}
 
-      {parsed && (
-        <div className="nfe-preview">
-          <p>Chave: {parsed.nfeKey}</p>
-          <p>Número: {parsed.nfeNumber}</p>
-          <p>Data de emissão: {parsed.issueDate}</p>
-          <p>Comprador: {parsed.buyerTaxId}</p>
-          <p>Quantidade: {parsed.quantityKg.toLocaleString("pt-BR")} kg</p>
-          <button type="button" onClick={handleConfirm} disabled={submitting}>
-            {submitting ? "Importando..." : "Confirmar importação"}
+      {batch.length > 0 && (
+        <div className="nfe-preview" style={{ maxWidth: "none" }}>
+          <p>
+            {validCount} de {batch.length} arquivo(s) prontos para importar.
+          </p>
+          <ul className="file-batch-list" style={{ listStyle: "none", paddingLeft: 0 }}>
+            {batch.map((item) => (
+              <li key={item.fileName} className="file-batch-item">
+                {item.parsed ? (
+                  <FileCheck2 size={16} color="var(--sc-success)" />
+                ) : (
+                  <FileWarning size={16} color="var(--sc-danger)" />
+                )}
+                <span className="file-batch-name" title={item.fileName}>
+                  {item.parsed
+                    ? `${item.fileName} — ${item.parsed.quantityKg.toLocaleString("pt-BR")} kg, emissão ${item.parsed.issueDate}`
+                    : `${item.fileName} — ${item.error}`}
+                </span>
+                <button type="button" className="btn-icon-danger" onClick={() => handleRemoveBatchItem(item.fileName)}>
+                  Remover
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button type="button" onClick={handleConfirmBatch} disabled={submitting || validCount === 0}>
+            {submitting ? "Importando..." : `Importar ${validCount} nota(s)`}
           </button>
         </div>
       )}

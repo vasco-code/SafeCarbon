@@ -1,4 +1,5 @@
 import { BrowserRouter, Link, NavLink, useLocation } from "react-router-dom";
+import { Leaf } from "lucide-react";
 import { AppRoutes } from "@/routes";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -7,7 +8,12 @@ function Header() {
 
   return (
     <header className="app-header">
-      <strong>SafeCarbon</strong>
+      <Link to="/projetos" className="app-logo">
+        <span className="app-logo-mark">
+          <Leaf size={15} strokeWidth={2.25} />
+        </span>
+        <strong>SafeCarbon</strong>
+      </Link>
       {session && (
         <>
           <nav>

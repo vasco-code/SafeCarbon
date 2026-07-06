@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { Cloud, Recycle, BadgeCheck, Link2, BarChart3 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface YearRow {
@@ -134,25 +135,39 @@ export function RelatorioEmissoesPage() {
 
   return (
     <section>
-      <h1>Relatório de Emissões</h1>
+      <h2 className="module-heading">
+        <BarChart3 size={20} /> Relatório de Emissões
+      </h2>
       <p>{projectName} — consolidado de inventário, vazamento e créditos por ano.</p>
 
       <div className="report-kpi-grid">
-        <div className="card">
-          <p className="report-kpi-label">Emissões operacionais inventariadas</p>
-          <p className="metric">{totalEmitted.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e</p>
+        <div className="card report-kpi-card">
+          <span className="report-kpi-icon"><Cloud size={17} /></span>
+          <div>
+            <p className="report-kpi-label">Emissões operacionais inventariadas</p>
+            <p className="metric">{totalEmitted.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e</p>
+          </div>
         </div>
-        <div className="card">
-          <p className="report-kpi-label">Redução líquida creditada</p>
-          <p className="metric">{totalCredited.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e</p>
+        <div className="card report-kpi-card">
+          <span className="report-kpi-icon"><Recycle size={17} /></span>
+          <div>
+            <p className="report-kpi-label">Redução líquida creditada</p>
+            <p className="metric">{totalCredited.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e</p>
+          </div>
         </div>
-        <div className="card">
-          <p className="report-kpi-label">Créditos aposentados</p>
-          <p className="metric">{totalRetiredTco2e.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e</p>
+        <div className="card report-kpi-card">
+          <span className="report-kpi-icon"><BadgeCheck size={17} /></span>
+          <div>
+            <p className="report-kpi-label">Créditos aposentados</p>
+            <p className="metric">{totalRetiredTco2e.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e</p>
+          </div>
         </div>
-        <div className="card">
-          <p className="report-kpi-label">Tokens ativos</p>
-          <p className="metric">{activeTokenCount}</p>
+        <div className="card report-kpi-card">
+          <span className="report-kpi-icon"><Link2 size={17} /></span>
+          <div>
+            <p className="report-kpi-label">Tokens ativos</p>
+            <p className="metric">{activeTokenCount}</p>
+          </div>
         </div>
       </div>
 

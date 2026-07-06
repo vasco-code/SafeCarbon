@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { FileText } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface SectionDef {
@@ -284,7 +285,9 @@ export function DcpEditorPage() {
 
   return (
     <section>
-      <h1>DCP — {projectName}</h1>
+      <h2 className="module-heading">
+        <FileText size={20} /> DCP — {projectName}
+      </h2>
       <p>Seções narrativas editáveis + seções geradas automaticamente do motor de cálculo.</p>
 
       <label htmlFor="dcp-year">Ano do ciclo para gerar seções automáticas</label>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { Calculator } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface StepRow {
@@ -206,7 +207,9 @@ export function CicloCalculoPage() {
 
   return (
     <section>
-      <h1>Ciclo de Créditos {year}</h1>
+      <h2 className="module-heading">
+        <Calculator size={20} /> Ciclo de Créditos {year}
+      </h2>
       <p>Etapas do cálculo, resultado final e status de verificação.</p>
 
       {cycle && (

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
+import { Wind } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type LeakageCategory =
@@ -104,7 +105,9 @@ export function VazamentosPage() {
 
   return (
     <section>
-      <h1>Avaliação de Vazamentos</h1>
+      <h2 className="module-heading">
+        <Wind size={20} /> Avaliação de Vazamentos
+      </h2>
       <p>Avaliação por categoria e fator de vazamento (LF) do ciclo.</p>
 
       <form onSubmit={handleSubmit}>

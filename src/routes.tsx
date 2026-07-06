@@ -8,7 +8,8 @@ import { UsuariosPage } from "@/modules/admin/UsuariosPage";
 import { MetodologiaListPage } from "@/modules/metodologia/MetodologiaListPage";
 import { MetodologiaDetailPage } from "@/modules/metodologia/MetodologiaDetailPage";
 import { ProjetosListPage } from "@/modules/projetos/ProjetosListPage";
-import { ProjetoDetailPage } from "@/modules/projetos/ProjetoDetailPage";
+import { ProjetoLayout } from "@/modules/projetos/ProjetoLayout";
+import { ProjetoOverviewPage } from "@/modules/projetos/ProjetoOverviewPage";
 import { DcpEditorPage } from "@/modules/projetos/DcpEditorPage";
 import { ProducaoPage } from "@/modules/producao-comercializacao/ProducaoPage";
 import { ComercializacaoPage } from "@/modules/producao-comercializacao/ComercializacaoPage";
@@ -38,31 +39,18 @@ export function AppRoutes() {
         <Route path="/metodologias/:versionId" element={<MetodologiaDetailPage />} />
 
         <Route path="/projetos" element={<ProjetosListPage />} />
-        <Route path="/projetos/:projectId" element={<ProjetoDetailPage />} />
-        <Route path="/projetos/:projectId/dcp" element={<DcpEditorPage />} />
-        <Route path="/projetos/:projectId/producao" element={<ProducaoPage />} />
-        <Route
-          path="/projetos/:projectId/comercializacao"
-          element={<ComercializacaoPage />}
-        />
-        <Route path="/projetos/:projectId/inventario" element={<InventarioPage />} />
-        <Route path="/projetos/:projectId/vazamentos" element={<VazamentosPage />} />
-        <Route
-          path="/projetos/:projectId/relatorio-emissoes"
-          element={<RelatorioEmissoesPage />}
-        />
-        <Route
-          path="/projetos/:projectId/ciclos/:year"
-          element={<CicloCalculoPage />}
-        />
-        <Route
-          path="/projetos/:projectId/verificacao"
-          element={<VerificacaoPage />}
-        />
-        <Route
-          path="/projetos/:projectId/distribuicao"
-          element={<DistribuicaoPage />}
-        />
+        <Route path="/projetos/:projectId" element={<ProjetoLayout />}>
+          <Route index element={<ProjetoOverviewPage />} />
+          <Route path="dcp" element={<DcpEditorPage />} />
+          <Route path="producao" element={<ProducaoPage />} />
+          <Route path="comercializacao" element={<ComercializacaoPage />} />
+          <Route path="inventario" element={<InventarioPage />} />
+          <Route path="vazamentos" element={<VazamentosPage />} />
+          <Route path="relatorio-emissoes" element={<RelatorioEmissoesPage />} />
+          <Route path="ciclos/:year" element={<CicloCalculoPage />} />
+          <Route path="verificacao" element={<VerificacaoPage />} />
+          <Route path="distribuicao" element={<DistribuicaoPage />} />
+        </Route>
       </Route>
     </Routes>
   );

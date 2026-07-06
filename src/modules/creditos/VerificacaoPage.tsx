@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
+import { ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface VerificationCycle {
@@ -173,7 +174,9 @@ export function VerificacaoPage() {
 
   return (
     <section>
-      <h1>Verificação e Emissão</h1>
+      <h2 className="module-heading">
+        <ShieldCheck size={20} /> Verificação e Emissão
+      </h2>
       <p>Ciclos de verificação, pareceres e status de tokenização.</p>
 
       {error && <p className="auth-error">{error}</p>}

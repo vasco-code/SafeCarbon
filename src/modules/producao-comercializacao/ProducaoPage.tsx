@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
+import { Factory } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface ProductionRecord {
@@ -83,7 +84,9 @@ export function ProducaoPage() {
 
   return (
     <section>
-      <h1>Produção</h1>
+      <h2 className="module-heading">
+        <Factory size={20} /> Produção
+      </h2>
       <p>Lançamento e consolidação da produção por período.</p>
 
       <form onSubmit={handleSubmit}>

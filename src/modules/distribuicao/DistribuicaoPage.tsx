@@ -2,6 +2,9 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { MapPinned, FileWarning, FileCheck2 } from "lucide-react";
+import { FileDropzone } from "@/components/FileDropzone";
+import { parseGeoFile, type ImportedSite } from "@/lib/geoImport";
 import { supabase } from "@/lib/supabase";
 
 interface ProjectSite {
@@ -12,10 +15,33 @@ interface ProjectSite {
   safegistrace_analysis_id: string | null;
 }
 
-// Estilo de demonstração público do MapLibre — sem chave/custo, suficiente
-// para o mapa de distribuição (DCP Figura 5). Trocar por um estilo próprio da
-// Safe Trace se/quando existir.
-const MAP_STYLE = "https://demotiles.maplibre.org/style.json";
+// Basemap de satélite (Esri World Imagery) + camada de rótulos (Esri World
+// Boundaries and Places) — ambos serviços públicos do ArcGIS Online, sem
+// chave/custo. Trocar por um estilo próprio da Safe Trace se/quando existir.
+const MAP_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  sources: {
+    "esri-satellite": {
+      type: "raster",
+      tiles: [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      ],
+      tileSize: 256,
+      attribution: "Esri, Maxar, Earthstar Geographics",
+    },
+    "esri-labels": {
+      type: "raster",
+      tiles: [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+      ],
+      tileSize: 256,
+    },
+  },
+  layers: [
+    { id: "esri-satellite", type: "raster", source: "esri-satellite" },
+    { id: "esri-labels", type: "raster", source: "esri-labels" },
+  ],
+};
 
 export function DistribuicaoPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -26,6 +52,9 @@ export function DistribuicaoPage() {
   const [longitude, setLongitude] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [importRows, setImportRows] = useState<ImportedSite[]>([]);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
@@ -116,9 +145,44 @@ export function DistribuicaoPage() {
     }
   }
 
+  async function handleImportFiles(files: File[]) {
+    setImportError(null);
+    const file = files[0];
+    try {
+      const rows = await parseGeoFile(file);
+      setImportRows(rows);
+    } catch (err) {
+      setImportRows([]);
+      setImportError(err instanceof Error ? err.message : "Erro ao ler o arquivo.");
+    }
+  }
+
+  async function handleConfirmImport() {
+    if (!projectId || importRows.length === 0) return;
+    setImporting(true);
+    setImportError(null);
+    const { error } = await supabase.from("project_sites").insert(
+      importRows.map((row) => ({
+        project_id: projectId,
+        label: row.label,
+        latitude: row.latitude,
+        longitude: row.longitude,
+      })),
+    );
+    setImporting(false);
+    if (error) {
+      setImportError(error.message);
+    } else {
+      setImportRows([]);
+      loadSites();
+    }
+  }
+
   return (
     <section>
-      <h1>Distribuição Geográfica</h1>
+      <h2 className="module-heading">
+        <MapPinned size={20} /> Distribuição Geográfica
+      </h2>
       <p>Pontos de distribuição do Fator P (equivalente à Figura 5 do DCP).</p>
 
       <form onSubmit={handleCreate}>
@@ -151,6 +215,45 @@ export function DistribuicaoPage() {
           {submitting ? "Adicionando..." : "Adicionar ponto"}
         </button>
       </form>
+
+      <h3 style={{ marginTop: "2rem" }}>Importar em massa</h3>
+      <p style={{ marginBottom: "0.75rem" }}>
+        Envie uma planilha (CSV/XLSX, com colunas de latitude/longitude) ou um shapefile zipado
+        (.zip com .shp/.dbf/.shx) para cadastrar vários pontos de uma vez.
+      </p>
+      <FileDropzone
+        accept=".csv,.xlsx,.xls,.zip"
+        onFiles={handleImportFiles}
+        label="Arraste a planilha ou o shapefile (.zip) aqui"
+        hint="CSV, XLSX, XLS ou ZIP contendo shapefile"
+      />
+
+      {importError && <p className="auth-error">{importError}</p>}
+
+      {importRows.length > 0 && (
+        <div className="nfe-preview" style={{ maxWidth: "none" }}>
+          <p>{importRows.length} ponto(s) reconhecido(s), prontos para importar:</p>
+          <ul className="file-batch-list" style={{ listStyle: "none", paddingLeft: 0, maxHeight: "220px", overflowY: "auto" }}>
+            {importRows.slice(0, 50).map((row, i) => (
+              <li key={`${row.label}-${i}`} className="file-batch-item">
+                <FileCheck2 size={16} color="var(--sc-success)" />
+                <span className="file-batch-name">
+                  {row.label} — {row.latitude.toFixed(5)}, {row.longitude.toFixed(5)}
+                </span>
+              </li>
+            ))}
+            {importRows.length > 50 && (
+              <li className="file-batch-item">
+                <FileWarning size={16} />
+                <span className="file-batch-name">…e mais {importRows.length - 50} ponto(s).</span>
+              </li>
+            )}
+          </ul>
+          <button type="button" onClick={handleConfirmImport} disabled={importing}>
+            {importing ? "Importando..." : `Importar ${importRows.length} ponto(s)`}
+          </button>
+        </div>
+      )}
 
       {loading && <p>Carregando...</p>}
 
