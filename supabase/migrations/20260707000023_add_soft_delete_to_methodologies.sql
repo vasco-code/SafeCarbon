@@ -2,26 +2,26 @@
 
 -- Metodologias
 alter table methodologies
-  add column deleted_at timestamptz,
-  add column deleted_by uuid references auth.users(id),
-  add column logo_url text;
+  add column if not exists deleted_at timestamptz,
+  add column if not exists deleted_by uuid references auth.users(id),
+  add column if not exists logo_url text;
 
-create index idx_methodologies_deleted on methodologies(deleted_at);
+create index if not exists idx_methodologies_deleted on methodologies(deleted_at);
 
 -- Versões de metodologias
 alter table methodology_versions
-  add column deleted_at timestamptz,
-  add column deleted_by uuid references auth.users(id),
-  add column replicated_from_version_id uuid references methodology_versions(id);
+  add column if not exists deleted_at timestamptz,
+  add column if not exists deleted_by uuid references auth.users(id),
+  add column if not exists replicated_from_version_id uuid references methodology_versions(id);
 
-create index idx_methodology_versions_deleted on methodology_versions(deleted_at);
+create index if not exists idx_methodology_versions_deleted on methodology_versions(deleted_at);
 
 -- Parâmetros de metodologias
 alter table methodology_parameters
-  add column deleted_at timestamptz,
-  add column deleted_by uuid references auth.users(id);
+  add column if not exists deleted_at timestamptz,
+  add column if not exists deleted_by uuid references auth.users(id);
 
-create index idx_methodology_parameters_deleted on methodology_parameters(deleted_at);
+create index if not exists idx_methodology_parameters_deleted on methodology_parameters(deleted_at);
 
 -- Atualizar policies para excluir registros soft-deleted
 drop policy if exists methodology_versions_public_read on methodology_versions;
