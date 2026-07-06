@@ -12,8 +12,8 @@ INSERT INTO branding_configs (
 )
 VALUES (
   'default',
-  NULL,
-  NULL,
+  '/logos/safecarbon-logo.svg',
+  '/logos/safecarbon-logo.svg',
   'oklch(0.440 0.150 269)',
   'oklch(0.700 0.130 195)',
   'oklch(0.500 0.140 145)',
