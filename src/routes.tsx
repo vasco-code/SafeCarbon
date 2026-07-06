@@ -7,6 +7,7 @@ import { ContaPage } from "@/modules/conta/ContaPage";
 import { UsuariosPage } from "@/modules/admin/UsuariosPage";
 import { OrganizacoesPage } from "@/modules/admin/OrganizacoesPage";
 import { BrandingAdminPage } from "@/modules/admin/BrandingAdminPage";
+import { AuditoriaPage } from "@/modules/auditoria/AuditoriaPage";
 import { MetodologiaListPage } from "@/modules/metodologia/MetodologiaListPage";
 import { MetodologiaDetailPage } from "@/modules/metodologia/MetodologiaDetailPage";
 import { ProjetosListPage } from "@/modules/projetos/ProjetosListPage";
@@ -38,6 +39,7 @@ export function AppRoutes() {
         <Route path="/usuarios" element={<UsuariosPage />} />
         <Route path="/admin/organizacoes" element={<OrganizacoesPage />} />
         <Route path="/admin/branding" element={<BrandingAdminPage />} />
+        <Route path="/auditoria" element={<AuditoriaPage />} />
 
         <Route path="/metodologias" element={<MetodologiaListPage />} />
         <Route path="/metodologias/:versionId" element={<MetodologiaDetailPage />} />

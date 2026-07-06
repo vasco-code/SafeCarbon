@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useParams } from "react-router-dom";
-import { BookOpen, Send } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { BookOpen, Send, Copy, Archive, History } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 
@@ -63,6 +63,7 @@ const PARAM_LABELS: Record<string, string> = {
 
 export function MetodologiaDetailPage() {
   const { versionId } = useParams<{ versionId: string }>();
+  const navigate = useNavigate();
   const { memberships, isPlatformAdmin } = useAuth();
   const [version, setVersion] = useState<MethodologyVersionDetail | null>(null);
   const [parameters, setParameters] = useState<ParameterRow[]>([]);
@@ -71,6 +72,10 @@ export function MetodologiaDetailPage() {
   const [sectionBody, setSectionBody] = useState("");
   const [savingSection, setSavingSection] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [replicating, setReplicating] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [newVersionLabel, setNewVersionLabel] = useState("");
+  const [showReplicateForm, setShowReplicateForm] = useState(false);
   const [newParam, setNewParam] = useState({ param_key: "", value: "", unit: "", source_citation: "", valid_from: "" });
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -188,6 +193,42 @@ export function MetodologiaDetailPage() {
     }
   }
 
+  async function handleReplicateVersion() {
+    if (!version || !newVersionLabel.trim()) return;
+    setReplicating(true);
+    setError(null);
+    const { data, error } = await supabase.rpc("replicate_methodology_version", {
+      p_version_id: version.id,
+      p_new_label: newVersionLabel,
+    });
+    setReplicating(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      setMessage("Versão replicada com sucesso!");
+      setShowReplicateForm(false);
+      setNewVersionLabel("");
+      navigate(`/metodologias/${data}`);
+    }
+  }
+
+  async function handleArchiveMethodology() {
+    if (!version?.methodologies) return;
+    if (!confirm("Arquivar esta metodologia? Ela não aparecerá mais nas listagens.")) return;
+    setArchiving(true);
+    setError(null);
+    const { error } = await supabase.rpc("soft_delete_methodology", {
+      p_methodology_id: version.methodologies.id,
+    });
+    setArchiving(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      setMessage("Metodologia arquivada.");
+      setTimeout(() => navigate("/metodologias"), 1500);
+    }
+  }
+
   if (loading) {
     return <p>Carregando...</p>;
   }
@@ -225,10 +266,71 @@ export function MetodologiaDetailPage() {
       {canEdit && isDraft && (
         <div className="action-bar">
           <p style={{ margin: 0 }}>Rascunho — visível só para membros da organização proprietária até ser publicado.</p>
-          <button type="button" className="btn-primary" onClick={handlePublish} disabled={publishing}>
-            <Send size={15} />
-            {publishing ? "Publicando..." : "Publicar versão"}
-          </button>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button type="button" className="btn-primary" onClick={handlePublish} disabled={publishing}>
+              <Send size={15} />
+              {publishing ? "Publicando..." : "Publicar versão"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {canEdit && (
+        <div className="action-bar">
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => setShowReplicateForm(!showReplicateForm)}
+              disabled={replicating}
+            >
+              <Copy size={15} />
+              {replicating ? "Replicando..." : "Criar nova versão"}
+            </button>
+            <button
+              type="button"
+              className="btn-icon-danger"
+              onClick={handleArchiveMethodology}
+              disabled={archiving}
+              title="Arquivar esta metodologia"
+            >
+              <Archive size={15} />
+              {archiving ? "Arquivando..." : "Arquivar"}
+            </button>
+            <button
+              type="button"
+              className="btn-icon-primary"
+              onClick={() => navigate(`/auditoria?entity_type=methodology&entity_id=${version.methodologies?.id || ""}`)}
+              title="Ver histórico de alterações"
+            >
+              <History size={15} />
+              Histórico
+            </button>
+          </div>
+
+          {showReplicateForm && (
+            <div style={{ marginTop: "1rem", padding: "1rem", backgroundColor: "#f5f5f5", borderRadius: "4px" }}>
+              <label htmlFor="new-version-label">Nova versão (ex: 1.1, 2.0)</label>
+              <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>
+                <input
+                  id="new-version-label"
+                  type="text"
+                  value={newVersionLabel}
+                  onChange={(e) => setNewVersionLabel(e.target.value)}
+                  placeholder="1.1"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleReplicateVersion}
+                  disabled={replicating || !newVersionLabel.trim()}
+                >
+                  {replicating ? "Criando..." : "Criar"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
