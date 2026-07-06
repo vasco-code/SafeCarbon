@@ -40,6 +40,14 @@ const REGISTRY_STANDARDS: { value: RegistryStandard; label: string }[] = [
   { value: "mbre", label: "MBRE" },
 ];
 
+const STATUS_LABELS: Record<string, string> = {
+  design: "Em design",
+  validation: "Em validação",
+  active: "Ativo",
+  suspended: "Suspenso",
+  closed: "Encerrado",
+};
+
 function OrgPicker({
   label,
   orgs,
@@ -324,7 +332,7 @@ export function ProjetosListPage() {
                   )}
                 </td>
                 <td>
-                  <span className="badge badge-neutral">{p.status}</span>
+                  <span className="badge badge-neutral">{STATUS_LABELS[p.status] ?? p.status}</span>
                 </td>
                 <td>
                   <button type="button" className="btn-primary" onClick={() => navigate(`/projetos/${p.id}`)}>

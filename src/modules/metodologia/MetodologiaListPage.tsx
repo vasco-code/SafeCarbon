@@ -18,6 +18,12 @@ const STATUS_BADGE: Record<string, string> = {
   deprecated: "badge-warning",
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  draft: "Rascunho",
+  published: "Publicado",
+  deprecated: "Descontinuado",
+};
+
 export function MetodologiaListPage() {
   const { memberships } = useAuth();
   const navigate = useNavigate();
@@ -164,7 +170,7 @@ export function MetodologiaListPage() {
                 <td>{v.methodologies?.sector}</td>
                 <td>{v.version_label}</td>
                 <td>
-                  <span className={`badge ${STATUS_BADGE[v.status] ?? "badge-neutral"}`}>{v.status}</span>
+                  <span className={`badge ${STATUS_BADGE[v.status] ?? "badge-neutral"}`}>{STATUS_LABELS[v.status] ?? v.status}</span>
                 </td>
                 <td>
                   <button type="button" className="btn-primary" onClick={() => navigate(`/metodologias/${v.id}`)}>
