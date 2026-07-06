@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => listener.subscription.unsubscribe();
-  }, [loadMemberships]);
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
