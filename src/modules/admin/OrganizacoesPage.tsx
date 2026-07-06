@@ -122,7 +122,11 @@ export function OrganizacoesPage() {
 
       setSaving(false);
       if (err) {
-        setError(`Erro ao atualizar: ${err.message}`);
+        console.error("Update error:", err);
+        const errorMsg = err.message.includes("policy")
+          ? "Você não tem permissão para editar organizações. Apenas admins de plataforma podem editar."
+          : err.message;
+        setError(`Erro ao atualizar: ${errorMsg}`);
       } else {
         setMessage("Organização atualizada com sucesso!");
         resetForm();
