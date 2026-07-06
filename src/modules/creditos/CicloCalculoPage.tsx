@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Calculator } from "lucide-react";
+import { Calculator, Zap } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface StepRow {
@@ -222,7 +222,8 @@ export function CicloCalculoPage() {
       {error && <p className="auth-error">{error}</p>}
       {message && <p className="auth-success">{message}</p>}
 
-      <button type="button" onClick={handleCalculate} disabled={calculating}>
+      <button type="button" className="btn-primary" onClick={handleCalculate} disabled={calculating}>
+        <Calculator size={15} />
         {calculating ? "Calculando..." : cycle ? "Recalcular ciclo" : "Calcular ciclo"}
       </button>
 
@@ -241,7 +242,8 @@ export function CicloCalculoPage() {
         <div className="dcp-section">
           <h2>Emissão e Tokenização (adaptador simulado)</h2>
           {!token && (
-            <button type="button" onClick={handleIssue} disabled={issuing}>
+            <button type="button" className="btn-primary" onClick={handleIssue} disabled={issuing}>
+              <Zap size={15} />
               {issuing ? "Emitindo..." : "Emitir crédito na blockchain"}
             </button>
           )}

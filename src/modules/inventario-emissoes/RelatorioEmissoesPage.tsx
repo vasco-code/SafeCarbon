@@ -144,7 +144,7 @@ export function RelatorioEmissoesPage() {
         <div className="card report-kpi-card">
           <span className="report-kpi-icon"><Cloud size={17} /></span>
           <div>
-            <p className="report-kpi-label">Emissões operacionais inventariadas</p>
+            <p className="report-kpi-label">Emissões inventariadas</p>
             <p className="metric">{totalEmitted.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e</p>
           </div>
         </div>

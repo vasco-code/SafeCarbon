@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 function ResumoCalculoCard({ projectId }: { projectId: string }) {
@@ -97,19 +98,24 @@ function ResumoCalculoCard({ projectId }: { projectId: string }) {
   return (
     <div className="dcp-section">
       <h2>Resumo de Cálculo</h2>
-      <label htmlFor="resumo-year">Ano</label>
-      <input
-        id="resumo-year"
-        type="number"
-        value={year}
-        onChange={(e) => {
-          setYear(e.target.value);
-          loadLatest(e.target.value);
-        }}
-      />
-      <button type="button" onClick={handleGenerate} disabled={loading}>
-        {loading ? "Gerando..." : "Gerar resumo"}
-      </button>
+      <div className="action-bar">
+        <div className="action-bar-field">
+          <label htmlFor="resumo-year">Ano</label>
+          <input
+            id="resumo-year"
+            type="number"
+            value={year}
+            onChange={(e) => {
+              setYear(e.target.value);
+              loadLatest(e.target.value);
+            }}
+          />
+        </div>
+        <button type="button" className="btn-primary" onClick={handleGenerate} disabled={loading}>
+          <Sparkles size={15} />
+          {loading ? "Gerando..." : "Gerar resumo"}
+        </button>
+      </div>
       {error && <p className="auth-error">{error}</p>}
       {narrativeText && <pre className="dcp-generated-content">{narrativeText}</pre>}
     </div>

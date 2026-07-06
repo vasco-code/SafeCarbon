@@ -200,6 +200,10 @@ body {
 
 button {
   font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
 }
 
 /* Botão primário — uma única aparência em todo o app. */
@@ -222,8 +226,14 @@ button[type="submit"]:hover:not(:disabled),
   background: var(--sc-primary-hover);
 }
 
-/* Botão secundário — usado para ações não-destrutivas fora de um <form> (ex.: "Calcular ciclo"). */
-main button[type="button"] {
+/* Botão secundário — usado para ações não-destrutivas fora de um <form>
+   (ex.: "Exportar DCP"). :not(.btn-primary):not(.btn-danger) evita que esta
+   regra (mais específica que uma classe única) sobrescreva o botão primário
+   quando ele também tem type="button" — bug real: "Calcular ciclo" e outros
+   CTAs com className="btn-primary" renderizavam como outline em vez de
+   sólido, porque `main button[type="button"]` vence `.btn-primary` em
+   especificidade. */
+main button[type="button"]:not(.btn-primary):not(.btn-danger):not(.btn-icon-danger) {
   background: transparent;
   color: var(--sc-ink);
   border: 1px solid var(--sc-border);
@@ -235,7 +245,7 @@ main button[type="button"] {
   transition: background 150ms ease-out, border-color 150ms ease-out;
 }
 
-main button[type="button"]:hover:not(:disabled) {
+main button[type="button"]:not(.btn-primary):not(.btn-danger):not(.btn-icon-danger):hover:not(:disabled) {
   background: var(--sc-surface-2);
   border-color: var(--sc-muted);
 }
@@ -314,16 +324,21 @@ form {
   gap: 0.35rem;
 }
 
-form label {
+/* Estilizado por .app-main, não por `form` — vários inputs "soltos" (ex.:
+   seletor de ano ao lado de um botão de ação) não ficam dentro de um
+   <form>, e sem isso caíam no visual padrão do browser (o que lia como
+   "genérico" mesmo com o resto da UI toda tokenizada). */
+.app-main label {
+  display: block;
   font-size: var(--sc-text-sm);
   font-weight: 500;
   color: var(--sc-muted);
   margin-top: 0.75rem;
 }
 
-form input,
-form select,
-form textarea {
+.app-main input:not([type="checkbox"]):not([type="radio"]),
+.app-main select,
+.app-main textarea {
   background: var(--sc-bg);
   border: 1px solid var(--sc-border);
   color: var(--sc-ink);
@@ -334,9 +349,9 @@ form textarea {
   transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
 }
 
-form input:focus,
-form select:focus,
-form textarea:focus {
+.app-main input:not([type="checkbox"]):not([type="radio"]):focus,
+.app-main select:focus,
+.app-main textarea:focus {
   outline: none;
   border-color: var(--sc-primary);
   box-shadow: 0 0 0 2px oklch(0.440 0.150 269 / 0.18);
@@ -642,6 +657,48 @@ form textarea:focus {
   white-space: nowrap;
 }
 
+/* Barra de ação — agrupa um campo (ex.: seletor de ano) com o botão
+   primário daquela ação, para não parecerem elementos soltos e
+   desconexos na página. */
+.action-bar {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  padding: 1.1rem 1.25rem;
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius);
+  margin: 1rem 0 1.75rem;
+}
+
+.action-bar-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.action-bar-field label {
+  margin-top: 0;
+  font-size: var(--sc-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+}
+
+.action-bar-field input,
+.action-bar-field select {
+  width: 7rem;
+}
+
+.action-bar .btn-primary {
+  margin-top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
 .nfe-preview {
   margin-top: 1rem;
   padding: 1rem 1.25rem;
@@ -858,6 +915,7 @@ form textarea:focus {
 .report-kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  align-items: stretch;
   gap: 1rem;
   margin: 1.5rem 0 2rem;
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { FileText } from "lucide-react";
+import { FileText, Sparkles, FileDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface SectionDef {
@@ -290,14 +290,20 @@ export function DcpEditorPage() {
       </h2>
       <p>Seções narrativas editáveis + seções geradas automaticamente do motor de cálculo.</p>
 
-      <label htmlFor="dcp-year">Ano do ciclo para gerar seções automáticas</label>
-      <input id="dcp-year" type="number" value={year} onChange={(e) => setYear(e.target.value)} />
-      <button type="button" onClick={generateSections} disabled={generating || !dcpDocumentId}>
-        {generating ? "Gerando..." : "Gerar seções automáticas"}
-      </button>
-      <button type="button" onClick={handleExport} disabled={!dcpDocumentId}>
-        Exportar DCP (.doc)
-      </button>
+      <div className="action-bar">
+        <div className="action-bar-field">
+          <label htmlFor="dcp-year">Ano do ciclo</label>
+          <input id="dcp-year" type="number" value={year} onChange={(e) => setYear(e.target.value)} />
+        </div>
+        <button type="button" className="btn-primary" onClick={generateSections} disabled={generating || !dcpDocumentId}>
+          <Sparkles size={15} />
+          {generating ? "Gerando..." : "Gerar seções automáticas"}
+        </button>
+        <button type="button" onClick={handleExport} disabled={!dcpDocumentId}>
+          <FileDown size={15} />
+          Exportar DCP (.doc)
+        </button>
+      </div>
 
       {error && <p className="auth-error">{error}</p>}
       {message && <p className="auth-success">{message}</p>}

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, FileDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface VerificationCycle {
@@ -204,11 +204,16 @@ export function VerificacaoPage() {
       </form>
 
       <h2>Relatório de Monitoramento</h2>
-      <label htmlFor="report-year">Ano</label>
-      <input id="report-year" type="number" value={reportYear} onChange={(e) => setReportYear(e.target.value)} />
-      <button type="button" onClick={handleGenerateReport} disabled={reportGenerating}>
-        {reportGenerating ? "Gerando..." : "Gerar relatório de monitoramento (.doc)"}
-      </button>
+      <div className="action-bar">
+        <div className="action-bar-field">
+          <label htmlFor="report-year">Ano</label>
+          <input id="report-year" type="number" value={reportYear} onChange={(e) => setReportYear(e.target.value)} />
+        </div>
+        <button type="button" className="btn-primary" onClick={handleGenerateReport} disabled={reportGenerating}>
+          <FileDown size={15} />
+          {reportGenerating ? "Gerando..." : "Gerar relatório de monitoramento (.doc)"}
+        </button>
+      </div>
 
       <h2>Ciclos de verificação</h2>
       {cycles.map((cycle) => (
