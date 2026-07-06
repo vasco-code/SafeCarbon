@@ -314,7 +314,7 @@ export function ProjetosListPage() {
                     <img
                       src={p.organizations_developer.logo_url}
                       alt={p.organizations_developer.name}
-                      style={{ maxWidth: "72px", maxHeight: "56px", objectFit: "contain" }}
+                      style={{ maxWidth: "100px", maxHeight: "32px", objectFit: "contain" }}
                     />
                   ) : (
                     <span>{p.organizations_developer?.name}</span>
@@ -325,7 +325,7 @@ export function ProjetosListPage() {
                     <img
                       src={p.organizations_proponent.logo_url}
                       alt={p.organizations_proponent.name}
-                      style={{ maxWidth: "72px", maxHeight: "56px", objectFit: "contain" }}
+                      style={{ maxWidth: "100px", maxHeight: "32px", objectFit: "contain" }}
                     />
                   ) : (
                     <span>{p.organizations_proponent?.name}</span>
