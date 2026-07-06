@@ -175,8 +175,9 @@ export function BrandingAdminPage() {
     if (error) {
       setMessage(`Erro: ${error.message}`);
     } else {
-      setMessage("Configuração salva com sucesso!");
-      setTimeout(() => setMessage(null), 3000);
+      setMessage("Configuração salva com sucesso! Recarregando...");
+      // Recarrega a página após 1.5s para aplicar as novas cores
+      setTimeout(() => window.location.reload(), 1500);
     }
   }
 
