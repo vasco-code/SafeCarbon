@@ -258,7 +258,7 @@ export function OrganizacoesPage() {
               type="button"
               onClick={() => resetForm()}
               disabled={saving}
-              style={{ backgroundColor: "var(--sc-muted)", color: "var(--sc-text)" }}
+              className="btn-secondary"
             >
               Cancelar
             </button>
