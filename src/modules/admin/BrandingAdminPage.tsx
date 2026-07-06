@@ -155,19 +155,21 @@ export function BrandingAdminPage() {
     setSaving(true);
     setMessage(null);
 
+    const payload = {
+      logo_url: branding.logo_url,
+      favicon_url: branding.favicon_url,
+      primary_oklch: branding.primary_oklch,
+      accent_oklch: branding.accent_oklch,
+      success_oklch: branding.success_oklch,
+      danger_oklch: branding.danger_oklch,
+      warning_oklch: branding.warning_oklch,
+      updated_at: new Date().toISOString(),
+    };
+
     const { error } = await supabase
       .from("branding_configs")
-      .upsert({
-        subdomain: branding.subdomain,
-        logo_url: branding.logo_url,
-        favicon_url: branding.favicon_url,
-        primary_oklch: branding.primary_oklch,
-        accent_oklch: branding.accent_oklch,
-        success_oklch: branding.success_oklch,
-        danger_oklch: branding.danger_oklch,
-        warning_oklch: branding.warning_oklch,
-        updated_at: new Date().toISOString(),
-      });
+      .update(payload)
+      .eq("subdomain", branding.subdomain);
 
     setSaving(false);
     if (error) {
@@ -296,21 +298,12 @@ export function BrandingAdminPage() {
                 <div key={field} style={{ marginBottom: "1rem" }}>
                   <label>{label}</label>
                   <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem", alignItems: "center" }}>
-                    <div
-                      style={{
-                        width: "48px",
-                        height: "48px",
-                        backgroundColor: branding[field],
-                        borderRadius: "4px",
-                        border: "1px solid var(--sc-border)",
-                      }}
-                    />
                     <input
                       type="color"
                       value={oklchToHex(branding[field] as string)}
                       onChange={(e) => handleColorPickerChange(field, e.target.value)}
-                      style={{ width: "60px", height: "40px", border: "1px solid var(--sc-border)", borderRadius: "4px", cursor: "pointer" }}
-                      title="Selecionar cor"
+                      style={{ width: "48px", height: "48px", border: "none", borderRadius: "4px", cursor: "pointer", padding: "2px" }}
+                      title="Clique para selecionar cor"
                     />
                     <input
                       type="text"
