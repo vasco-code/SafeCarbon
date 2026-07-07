@@ -1,11 +1,13 @@
 import { Leaf } from "lucide-react";
 
 export function ReportHeader({
+  platformLogoUrl,
   developerLogoUrl,
   developerName,
   proponentLogoUrl,
   proponentName,
 }: {
+  platformLogoUrl?: string | null;
   developerLogoUrl?: string | null;
   developerName?: string;
   proponentLogoUrl?: string | null;
@@ -25,9 +27,17 @@ export function ReportHeader({
     >
       {/* Safe Carbon */}
       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "40px", height: "40px", backgroundColor: "var(--sc-primary)", color: "white", borderRadius: "4px" }}>
-          <Leaf size={20} strokeWidth={2.25} />
-        </span>
+        {platformLogoUrl ? (
+          <img
+            src={platformLogoUrl}
+            alt="SafeCarbon"
+            style={{ maxWidth: "40px", maxHeight: "40px", objectFit: "contain" }}
+          />
+        ) : (
+          <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "40px", height: "40px", backgroundColor: "var(--sc-primary)", color: "white", borderRadius: "4px" }}>
+            <Leaf size={20} strokeWidth={2.25} />
+          </span>
+        )}
         <span style={{ fontSize: "0.9375rem", fontWeight: 600 }}>SafeCarbon</span>
       </div>
 

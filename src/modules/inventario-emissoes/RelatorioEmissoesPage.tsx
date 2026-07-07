@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Cloud, Recycle, BadgeCheck, Link2, BarChart3 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useBranding } from "@/hooks/useBranding";
 import { ReportHeader } from "@/components/ReportHeader";
 
 interface YearRow {
@@ -27,8 +28,15 @@ const BATCH_STATUS_LABELS: Record<string, string> = {
   retired: "Aposentado",
 };
 
+const TOKEN_STATUS_LABELS: Record<string, string> = {
+  active: "Ativo",
+  transferred: "Transferido",
+  retired: "Aposentado",
+};
+
 export function RelatorioEmissoesPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const { branding } = useBranding();
   const [projectName, setProjectName] = useState("");
   const [developerName, setDeveloperName] = useState("");
   const [developerLogoUrl, setDeveloperLogoUrl] = useState<string | null>(null);
@@ -170,6 +178,7 @@ export function RelatorioEmissoesPage() {
       <p>{projectName} — consolidado de inventário, vazamento e créditos por ano.</p>
 
       <ReportHeader
+        platformLogoUrl={branding.logo_url}
         developerLogoUrl={developerLogoUrl}
         developerName={developerName}
         proponentLogoUrl={proponentLogoUrl}
@@ -281,7 +290,7 @@ export function RelatorioEmissoesPage() {
                       t.status === "active" ? "badge-success" : t.status === "retired" ? "badge-neutral" : "badge-info"
                     }`}
                   >
-                    {t.status}
+                    {TOKEN_STATUS_LABELS[t.status] || t.status}
                   </span>
                 </td>
                 <td>{t.issued_at ? new Date(t.issued_at).toLocaleDateString("pt-BR") : "—"}</td>
