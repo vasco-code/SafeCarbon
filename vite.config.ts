@@ -9,6 +9,19 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 1500, // Maplibre-gl é uma biblioteca pesada
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'supabase': ['@supabase/supabase-js'],
+          'ui-vendor': ['lucide-react'],
+          'mapping': ['maplibre-gl'],
+        },
+      },
+    },
+  },
   server: {
     port: 5183,
   },
