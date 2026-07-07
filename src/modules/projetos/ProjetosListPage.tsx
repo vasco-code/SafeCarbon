@@ -228,7 +228,7 @@ export function ProjetosListPage() {
       <h1>Projetos de Carbono</h1>
       <p>Lista de projetos ativos, em validação e encerrados.</p>
 
-      <button type="button" onClick={() => setShowForm((v) => !v)}>
+      <button type="button" className="btn-primary" onClick={() => setShowForm((v) => !v)}>
         {showForm ? "Cancelar" : "+ Novo projeto"}
       </button>
 
