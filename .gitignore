@@ -9,3 +9,4 @@ dist-ssr
 supabase/.branches
 supabase/.temp
 .impeccable
+.dyad/
