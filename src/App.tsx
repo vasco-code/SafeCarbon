@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBranding } from "@/hooks/useBranding";
 
 function Header() {
-  const { session, user, canManageUsers, signOut } = useAuth();
+  const { session, user, canManageUsers, isPlatformAdmin, signOut } = useAuth();
   const { branding } = useBranding();
 
   return (
@@ -41,10 +41,12 @@ function Header() {
                 <NavLink to="/admin/organizacoes" className={({ isActive }) => (isActive ? "active" : "")}>
                   Organizações
                 </NavLink>
-                <NavLink to="/admin/branding" className={({ isActive }) => (isActive ? "active" : "")}>
-                  Branding
-                </NavLink>
               </>
+            )}
+            {isPlatformAdmin && (
+              <NavLink to="/admin/branding" className={({ isActive }) => (isActive ? "active" : "")}>
+                Branding
+              </NavLink>
             )}
           </nav>
           <div className="app-header-user">
