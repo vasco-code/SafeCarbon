@@ -11,6 +11,7 @@
 
   /* Marca */
   --sc-primary: oklch(0.440 0.150 269);
+  --sc-primary-dark: oklch(0.360 0.140 269);
   --sc-primary-hover: oklch(0.360 0.140 269);
   --sc-accent: oklch(0.700 0.130 195);
   --sc-success: oklch(0.500 0.140 145);
