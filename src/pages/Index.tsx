@@ -1,29 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { ShieldCheck, AlertCircle, Database } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
-  const [status, setStatus] = useState<'loading' | 'connected' | 'error'>('loading');
+  const navigate = useNavigate();
   const hasKeys = !!import.meta.env.VITE_SUPABASE_URL && !!import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   useEffect(() => {
     async function checkConnection() {
       if (!hasKeys) {
-        setStatus('error');
         return;
       }
-      
+
       try {
-        const { error } = await supabase.from('_dummy_check' as any).select('*').limit(1);
-        // Ignoramos erro de "tabela não existe" pois prova que a URL é válida
-        if (error && error.code === 'PGRST116') {
-           setStatus('connected');
-        } else {
-           setStatus('connected');
-        }
+        await supabase.from('_dummy_check' as any).select('*').limit(1);
       } catch (e) {
-        setStatus('error');
+        // Ignoramos erros de conexão
       }
     }
     checkConnection();
@@ -66,9 +59,13 @@ const Index = () => {
         )}
 
         <div className="space-y-3">
-          <Button className="w-full" disabled={!hasKeys}>
+          <button
+            onClick={() => navigate('/login')}
+            disabled={!hasKeys}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+          >
             Entrar na Plataforma
-          </Button>
+          </button>
           <p className="text-xs text-slate-400 font-mono pt-4">
             v1.0.0-alpha
           </p>
