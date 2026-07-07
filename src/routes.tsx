@@ -4,13 +4,13 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { LoginPage } from "@/modules/auth/LoginPage";
 import { ForgotPasswordPage } from "@/modules/auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/modules/auth/ResetPasswordPage";
+import { BrandingAdminPage } from "@/modules/admin/BrandingAdminPage";
 import Index from "@/pages/Index";
 
 // Lazy load admin and less frequently accessed pages
 const ContaPage = lazy(() => import("@/modules/conta/ContaPage").then(m => ({ default: m.ContaPage })));
 const UsuariosPage = lazy(() => import("@/modules/admin/UsuariosPage").then(m => ({ default: m.UsuariosPage })));
 const OrganizacoesPage = lazy(() => import("@/modules/admin/OrganizacoesPage").then(m => ({ default: m.OrganizacoesPage })));
-const BrandingAdminPage = lazy(() => import("@/modules/admin/BrandingAdminPage").then(m => ({ default: m.BrandingAdminPage })));
 const AuditoriaPage = lazy(() => import("@/modules/auditoria/AuditoriaPage").then(m => ({ default: m.AuditoriaPage })));
 
 // Lazy load methodology pages
