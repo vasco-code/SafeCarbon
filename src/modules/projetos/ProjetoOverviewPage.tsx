@@ -1,7 +1,151 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ArrowRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+
+type ProjectStatus = "design" | "validation" | "active" | "suspended" | "closed";
+
+const STATUS_LABELS: Record<ProjectStatus, string> = {
+  design: "Em design",
+  validation: "Em validação",
+  active: "Ativo",
+  suspended: "Suspenso",
+  closed: "Encerrado",
+};
+
+const STATUS_BADGE_CLASS: Record<ProjectStatus, string> = {
+  design: "badge-neutral",
+  validation: "badge-warning",
+  active: "badge-success",
+  suspended: "badge-warning",
+  closed: "badge-neutral",
+};
+
+function StatusCard({ projectId }: { projectId: string }) {
+  const [currentStatus, setCurrentStatus] = useState<ProjectStatus | null>(null);
+  const [newStatus, setNewStatus] = useState<ProjectStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const allowedTransitions: Record<ProjectStatus, ProjectStatus[]> = {
+    design: ["validation", "suspended"],
+    validation: ["active", "design", "suspended"],
+    active: ["suspended", "closed"],
+    suspended: ["active", "closed"],
+    closed: [],
+  };
+
+  async function loadStatus() {
+    const { data } = await supabase
+      .from("carbon_projects")
+      .select("status")
+      .eq("id", projectId)
+      .maybeSingle();
+    if (data) {
+      setCurrentStatus(data.status as ProjectStatus);
+      setNewStatus(null);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadStatus();
+  }, [projectId]);
+
+  async function handleUpdateStatus() {
+    if (!newStatus || newStatus === currentStatus) return;
+    setUpdating(true);
+    setError(null);
+    setMessage(null);
+
+    const { error: updateError } = await supabase
+      .from("carbon_projects")
+      .update({ status: newStatus })
+      .eq("id", projectId);
+
+    setUpdating(false);
+    if (updateError) {
+      setError(updateError.message);
+    } else {
+      setMessage(`Status alterado de "${STATUS_LABELS[currentStatus!]}" para "${STATUS_LABELS[newStatus]}"`);
+      setCurrentStatus(newStatus);
+      setNewStatus(null);
+    }
+  }
+
+  if (loading || !currentStatus) return null;
+
+  const availableTransitions = allowedTransitions[currentStatus];
+
+  return (
+    <div style={{ marginBottom: "2rem" }}>
+      <div
+        style={{
+          padding: "1.5rem",
+          backgroundColor: "#f9f9f9",
+          borderRadius: "8px",
+          border: "2px solid var(--sc-border)",
+        }}
+      >
+        <h2 style={{ marginTop: 0, marginBottom: "1rem" }}>Status do Projeto</h2>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "2rem", flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: "0.875rem", color: "#666", marginBottom: "0.5rem" }}>Status atual</div>
+            <span className={`badge ${STATUS_BADGE_CLASS[currentStatus]}`} style={{ fontSize: "1rem", padding: "0.5rem 1rem" }}>
+              {STATUS_LABELS[currentStatus]}
+            </span>
+          </div>
+
+          {availableTransitions.length > 0 && (
+            <>
+              <ArrowRight size={20} color="#999" />
+              <div>
+                <label htmlFor="new-status" style={{ fontSize: "0.875rem", color: "#666", display: "block", marginBottom: "0.5rem" }}>
+                  Alterar para
+                </label>
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                  <select
+                    id="new-status"
+                    value={newStatus || ""}
+                    onChange={(e) => setNewStatus((e.target.value || null) as ProjectStatus | null)}
+                    style={{ flex: 1 }}
+                  >
+                    <option value="">Selecione...</option>
+                    {availableTransitions.map((status) => (
+                      <option key={status} value={status}>
+                        {STATUS_LABELS[status]}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={handleUpdateStatus}
+                    disabled={!newStatus || newStatus === currentStatus || updating}
+                  >
+                    {updating ? "Atualizando..." : "Atualizar"}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {availableTransitions.length === 0 && (
+            <div style={{ color: "#666", fontSize: "0.875rem" }}>
+              Projeto finalizado — nenhuma transição de status disponível
+            </div>
+          )}
+        </div>
+
+        {message && <p style={{ color: "green", marginTop: "1rem", marginBottom: 0 }}>✓ {message}</p>}
+        {error && <p style={{ color: "red", marginTop: "1rem", marginBottom: 0 }}>✗ {error}</p>}
+      </div>
+    </div>
+  );
+}
 
 function ResumoCalculoCard({ projectId }: { projectId: string }) {
   const [year, setYear] = useState("2025");
@@ -125,5 +269,10 @@ function ResumoCalculoCard({ projectId }: { projectId: string }) {
 export function ProjetoOverviewPage() {
   const { projectId } = useParams<{ projectId: string }>();
   if (!projectId) return null;
-  return <ResumoCalculoCard projectId={projectId} />;
+  return (
+    <>
+      <StatusCard projectId={projectId} />
+      <ResumoCalculoCard projectId={projectId} />
+    </>
+  );
 }
