@@ -23,10 +23,12 @@ import { CicloCalculoPage } from "@/modules/creditos/CicloCalculoPage";
 import { VerificacaoPage } from "@/modules/creditos/VerificacaoPage";
 import { DistribuicaoPage } from "@/modules/distribuicao/DistribuicaoPage";
 import { VerificarTokenPage } from "@/modules/verificacao-publica/VerificarTokenPage";
+import Index from "@/pages/Index";
 
 export function AppRoutes() {
   return (
     <Routes>
+      <Route path="/" element={<Index />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
       <Route path="/redefinir-senha" element={<ResetPasswordPage />} />

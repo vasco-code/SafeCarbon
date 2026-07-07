@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { PasswordInput } from "@/components/PasswordInput";
 import { AuthLayout } from "@/components/AuthLayout";
+import { AlertCircle } from "lucide-react";
 
 export function LoginPage() {
   const { session, signIn } = useAuth();
@@ -11,6 +12,8 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  
+  const hasKeys = !!import.meta.env.VITE_SUPABASE_URL && !!import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   if (session) {
     const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/projetos";
@@ -31,6 +34,14 @@ export function LoginPage() {
   return (
     <AuthLayout>
       <h1>Entrar</h1>
+      
+      {!hasKeys && (
+        <div className="auth-error" style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <AlertCircle size={18} />
+          <span>Erro: Chaves do Supabase não configuradas.</span>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
         <label htmlFor="email">E-mail</label>
         <input
@@ -53,7 +64,7 @@ export function LoginPage() {
 
         {error && <p className="auth-error">{error}</p>}
 
-        <button type="submit" disabled={submitting}>
+        <button type="submit" disabled={submitting || !hasKeys}>
           {submitting ? "Entrando..." : "Entrar"}
         </button>
       </form>
