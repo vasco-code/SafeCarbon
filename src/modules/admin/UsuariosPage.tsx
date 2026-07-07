@@ -18,7 +18,7 @@ const MEMBER_ROLES = ["owner", "manager", "contributor", "viewer"] as const;
 type MemberRole = (typeof MEMBER_ROLES)[number];
 
 export function UsuariosPage() {
-  const { canManageUsers, user, memberships } = useAuth();
+  const { canManageUsers, user } = useAuth();
   const [orgs, setOrgs] = useState<OrgOption[]>([]);
   const [selectedOrgType, setSelectedOrgType] = useState<string | null>(null);
   const [email, setEmail] = useState("");

@@ -36,7 +36,7 @@ export function OrganizacoesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
-    org_type: "project_developer" as const,
+    org_type: "project_developer" as Organization["org_type"],
     tax_id: "",
     logo_url: "",
   });

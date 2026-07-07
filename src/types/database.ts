@@ -386,6 +386,22 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["branding_configs"]["Row"]>;
         Relationships: [];
       };
+      audit_logs: {
+        Row: {
+          id: string;
+          action: string;
+          entity_type: string;
+          entity_id: string;
+          performed_by: string | null;
+          performed_at: string;
+          changes: Record<string, unknown> | null;
+          organization_id: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["audit_logs"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["audit_logs"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: {
       production_period_summary: {
@@ -434,6 +450,14 @@ export interface Database {
           registry_standard: string;
           period_year: number;
         }[];
+      };
+      replicate_methodology_version: {
+        Args: { p_version_id: string; p_new_label: string };
+        Returns: string;
+      };
+      soft_delete_methodology: {
+        Args: { p_methodology_id: string };
+        Returns: void;
       };
     };
   };

@@ -4,20 +4,11 @@ import { History, ChevronDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 
-interface AuditLog {
-  id: string;
-  action: string;
-  entity_type: string;
-  entity_id: string;
-  performed_by: string;
-  organization_id: string | null;
-  changes: Record<string, any> | null;
-  ip_address: string | null;
-  created_at: string;
-  related_entity_id: string | null;
-  related_entity_type: string | null;
+import { Database } from "@/types/database";
+
+type AuditLog = Database["public"]["Tables"]["audit_logs"]["Row"] & {
   user_email?: string;
-}
+};
 
 const ACTION_LABELS: Record<string, string> = {
   CREATE: "Criado",
@@ -70,7 +61,7 @@ export function AuditoriaPage() {
     if (error) {
       console.error("Erro ao carregar logs:", error);
     } else {
-      setLogs((data || []) as AuditLog[]);
+      setLogs((data || []) as unknown as AuditLog[]);
     }
 
     setLoading(false);
@@ -209,17 +200,6 @@ export function AuditoriaPage() {
                     </div>
                   )}
 
-                  {log.ip_address && (
-                    <div style={{ marginBottom: "1rem" }}>
-                      <strong>IP:</strong> {log.ip_address}
-                    </div>
-                  )}
-
-                  {log.related_entity_id && (
-                    <div>
-                      <strong>Relacionado a:</strong> {log.related_entity_type} ({log.related_entity_id.slice(0, 8)}...)
-                    </div>
-                  )}
                 </div>
               )}
             </div>

@@ -10,7 +10,7 @@ interface MethodologyVersionDetail {
   status: "draft" | "published" | "deprecated";
   published_at: string | null;
   sections: Record<string, { titulo: string; corpo: string }>;
-  methodologies: { name: string; sector: string; ipcc_category: string | null; owner_org_id: string } | null;
+  methodologies: { id: string; name: string; sector: string; ipcc_category: string | null; owner_org_id: string } | null;
 }
 
 interface ParameterRow {
@@ -86,7 +86,7 @@ export function MetodologiaDetailPage() {
     const [versionResult, parametersResult] = await Promise.all([
       supabase
         .from("methodology_versions")
-        .select("id, version_label, status, published_at, sections, methodologies(name, sector, ipcc_category, owner_org_id)")
+        .select("id, version_label, status, published_at, sections, methodologies(id, name, sector, ipcc_category, owner_org_id)")
         .eq("id", versionId)
         .maybeSingle(),
       supabase
