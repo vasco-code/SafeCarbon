@@ -56,6 +56,15 @@ export function OrganizacoesPage() {
     if (data) {
       const orgsWithStats = await Promise.all(
         data.map(async (org) => {
+          // Validar se org.id é um UUID válido
+          if (!org.id || org.id === "00000000-0000-0000-0000-000000000001") {
+            return {
+              ...org,
+              memberCount: 0,
+              projectCount: 0,
+            };
+          }
+
           const [members, projects] = await Promise.all([
             supabase.from("org_members").select("id", { count: "exact" }).eq("org_id", org.id),
             supabase.from("carbon_projects").select("id", { count: "exact" }).or(`developer_org_id.eq.${org.id},proponent_org_id.eq.${org.id}`),
