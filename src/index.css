@@ -448,9 +448,10 @@ form {
   margin-top: 0.75rem;
 }
 
-.app-main input:not([type="checkbox"]):not([type="radio"]),
-.app-main select,
-.app-main textarea {
+/* Global input/select/textarea styles - applies everywhere */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
   background: var(--sc-bg);
   border: 1px solid var(--sc-border);
   color: var(--sc-ink);
@@ -461,9 +462,9 @@ form {
   transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
 }
 
-.app-main input:not([type="checkbox"]):not([type="radio"]):focus,
-.app-main select:focus,
-.app-main textarea:focus {
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
   outline: none;
   border-color: var(--sc-primary);
   box-shadow: 0 0 0 2px oklch(0.440 0.150 269 / 0.18);
