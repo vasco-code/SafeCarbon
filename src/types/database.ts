@@ -96,6 +96,7 @@ export interface Database {
           registry_standard: "verra" | "gold_standard" | "mbre" | "none_yet";
           location_text: string | null;
           status: "design" | "validation" | "active" | "suspended" | "closed";
+          description: string | null;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["carbon_projects"]["Row"]>;
@@ -346,12 +347,61 @@ export interface Database {
           ledger_ref: string | null;
           status: "active" | "transferred" | "retired";
           owner_reference: string | null;
+          holder_org_id: string | null;
           retired_at: string | null;
           retired_reason: string | null;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["blockchain_tokens"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["blockchain_tokens"]["Row"]>;
+        Relationships: [];
+      };
+      token_transfers: {
+        Row: {
+          id: string;
+          blockchain_token_id: string;
+          from_org_id: string | null;
+          to_org_id: string;
+          tx_hash: string;
+          note: string | null;
+          transferred_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["token_transfers"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["token_transfers"]["Row"]>;
+        Relationships: [];
+      };
+      project_status_requests: {
+        Row: {
+          id: string;
+          project_id: string;
+          requested_by: string;
+          requested_by_org_id: string;
+          requested_status: "design" | "validation" | "active" | "suspended" | "closed";
+          reason: string | null;
+          status: "pending" | "approved" | "rejected";
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          review_note: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["project_status_requests"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["project_status_requests"]["Row"]>;
+        Relationships: [];
+      };
+      project_documents: {
+        Row: {
+          id: string;
+          project_id: string;
+          doc_type: "dcp" | "resumo_calculo" | "auditoria_aprovacao" | "plano_melhorias" | "checklist" | "foto" | "outro";
+          title: string;
+          file_url: string;
+          storage_path: string;
+          uploaded_by: string | null;
+          uploaded_by_org_id: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["project_documents"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["project_documents"]["Row"]>;
         Relationships: [];
       };
       project_sites: {
@@ -457,6 +507,10 @@ export interface Database {
       };
       soft_delete_methodology: {
         Args: { p_methodology_id: string };
+        Returns: void;
+      };
+      resolve_project_status_request: {
+        Args: { p_request_id: string; p_approve: boolean; p_review_note?: string | null };
         Returns: void;
       };
     };

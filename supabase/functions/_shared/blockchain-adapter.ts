@@ -20,6 +20,17 @@ export interface CarbonBlockchainAdapter {
 
   retire(input: { tokenId: string; reason: string }): Promise<{ txHash: string; retiredAt: string }>;
 
+  // Transferência de titularidade — mesmo grau de incerteza que issueBatch/
+  // retire: o contrato real de blockchain da Safe Trace ainda não foi
+  // confirmado (docs/04-arquitetura-tecnica-integracoes.md §3, "ponto de
+  // decisão em aberto"), então o formato de input/output aqui é uma
+  // suposição nossa, não um contrato validado.
+  transfer(input: {
+    tokenId: string;
+    fromOrgReference: string;
+    toOrgReference: string;
+  }): Promise<{ txHash: string; transferredAt: string }>;
+
   getStatus(tokenId: string): Promise<{ status: "active" | "transferred" | "retired"; owner: string }>;
 
   verifyTx(txHash: string): Promise<boolean>;
@@ -43,6 +54,11 @@ class SimulatedBlockchainAdapter implements CarbonBlockchainAdapter {
   async retire(input: Parameters<CarbonBlockchainAdapter["retire"]>[0]) {
     void input;
     return { txHash: `0xsim${randomHex(32)}`, retiredAt: new Date().toISOString() };
+  }
+
+  async transfer(input: Parameters<CarbonBlockchainAdapter["transfer"]>[0]) {
+    void input;
+    return { txHash: `0xsim${randomHex(32)}`, transferredAt: new Date().toISOString() };
   }
 
   async getStatus(tokenId: string) {

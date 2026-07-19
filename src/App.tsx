@@ -5,8 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBranding } from "@/hooks/useBranding";
 
 function Header() {
-  const { session, user, canManageUsers, isPlatformAdmin, signOut } = useAuth();
+  const { session, user, memberships, canManageUsers, isPlatformAdmin, signOut } = useAuth();
   const { branding } = useBranding();
+  const hasWallet = isPlatformAdmin || memberships.some((m) => m.orgType === "proponent" || m.orgType === "project_developer");
 
   return (
     <header className="app-header">
@@ -33,6 +34,11 @@ function Header() {
             <NavLink to="/metodologias" className={({ isActive }) => (isActive ? "active" : "")}>
               Metodologias
             </NavLink>
+            {hasWallet && (
+              <NavLink to="/carteira" className={({ isActive }) => (isActive ? "active" : "")}>
+                Carteira
+              </NavLink>
+            )}
             {canManageUsers && (
               <>
                 <NavLink to="/usuarios" className={({ isActive }) => (isActive ? "active" : "")}>

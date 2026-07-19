@@ -1,7 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
-import { ShieldCheck, FileDown } from "lucide-react";
+import { ShieldCheck, FileDown, Download } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProjectRole } from "@/hooks/useProjectRole";
+import { FileDropzone } from "@/components/FileDropzone";
 
 interface VerificationCycle {
   id: string;
@@ -13,8 +16,146 @@ interface VerificationCycle {
   verified_at: string | null;
 }
 
+type AuditDocType = "auditoria_aprovacao" | "plano_melhorias";
+
+interface AuditDocument {
+  id: string;
+  doc_type: AuditDocType;
+  title: string;
+  storage_path: string;
+  created_at: string;
+}
+
+const AUDIT_DOC_LABELS: Record<AuditDocType, string> = {
+  auditoria_aprovacao: "Aprovação de Auditoria",
+  plano_melhorias: "Plano de Melhorias",
+};
+
+function DocumentosAuditoria({ projectId, canUpload }: { projectId: string; canUpload: boolean }) {
+  const { user } = useAuth();
+  const { orgId } = useProjectRole(projectId);
+  const [docs, setDocs] = useState<AuditDocument[]>([]);
+  const [docType, setDocType] = useState<AuditDocType>("auditoria_aprovacao");
+  const [title, setTitle] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadDocs() {
+    const { data } = await supabase
+      .from("project_documents")
+      .select("id, doc_type, title, storage_path, created_at")
+      .eq("project_id", projectId)
+      .in("doc_type", ["auditoria_aprovacao", "plano_melhorias"])
+      .order("created_at", { ascending: false });
+    setDocs((data as AuditDocument[]) ?? []);
+  }
+
+  useEffect(() => {
+    loadDocs();
+  }, [projectId]);
+
+  async function handleFiles(files: File[]) {
+    if (files.length === 0) return;
+    setUploading(true);
+    setError(null);
+    for (const file of files) {
+      const path = `${projectId}/${docType}/${Date.now()}-${file.name}`;
+      const { error: uploadError } = await supabase.storage.from("project-documents").upload(path, file);
+      if (uploadError) {
+        setError(uploadError.message);
+        continue;
+      }
+      const { error: insertError } = await supabase.from("project_documents").insert({
+        project_id: projectId,
+        doc_type: docType,
+        title: title.trim() || file.name,
+        file_url: path,
+        storage_path: path,
+        uploaded_by: user?.id,
+        uploaded_by_org_id: orgId,
+      });
+      if (insertError) setError(insertError.message);
+    }
+    setUploading(false);
+    setTitle("");
+    loadDocs();
+  }
+
+  async function handleDownload(doc: AuditDocument) {
+    const { data } = await supabase.storage.from("project-documents").createSignedUrl(doc.storage_path, 3600);
+    if (data) window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
+  return (
+    <div>
+      <h2>Documentos de Verificação</h2>
+      <p>Aprovação formal da auditoria e plano de melhorias, quando aplicável.</p>
+
+      {canUpload && (
+        <>
+          <div className="action-bar">
+            <div className="action-bar-field">
+              <label htmlFor="audit-doc-type">Tipo</label>
+              <select id="audit-doc-type" value={docType} onChange={(e) => setDocType(e.target.value as AuditDocType)}>
+                {Object.entries(AUDIT_DOC_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="action-bar-field">
+              <label htmlFor="audit-doc-title">Título (opcional)</label>
+              <input id="audit-doc-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+          </div>
+          <FileDropzone
+            multiple
+            onFiles={handleFiles}
+            disabled={uploading}
+            label={uploading ? "Enviando..." : "Arraste o documento aqui ou clique para escolher"}
+          />
+          {error && <p className="auth-error">{error}</p>}
+        </>
+      )}
+
+      {docs.length === 0 ? (
+        <div className="empty-state">
+          <p>Nenhum documento de verificação enviado ainda.</p>
+        </div>
+      ) : (
+        <table style={{ marginTop: "1rem" }}>
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Título</th>
+              <th>Enviado em</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {docs.map((doc) => (
+              <tr key={doc.id}>
+                <td>{AUDIT_DOC_LABELS[doc.doc_type]}</td>
+                <td>{doc.title}</td>
+                <td>{new Date(doc.created_at).toLocaleDateString("pt-BR")}</td>
+                <td className="row-actions">
+                  <button type="button" onClick={() => handleDownload(doc)}>
+                    <Download size={14} /> Baixar
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 export function VerificacaoPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const { accessLevel } = useProjectRole(projectId);
   const [cycles, setCycles] = useState<VerificationCycle[]>([]);
   const [vvbOrgs, setVvbOrgs] = useState<{ id: string; name: string }[]>([]);
   const [startYear, setStartYear] = useState("2025");
@@ -42,8 +183,8 @@ export function VerificacaoPage() {
   }
 
   useEffect(() => {
-    loadData();
-  }, [projectId]);
+    if (accessLevel === "full") loadData();
+  }, [projectId, accessLevel]);
 
   async function handleSchedule(event: FormEvent) {
     event.preventDefault();
@@ -172,6 +313,22 @@ export function VerificacaoPage() {
     setMessage("Relatório de monitoramento gerado.");
   }
 
+  if (!projectId) return null;
+
+  // Papel 'verifier' (VVB) só enxerga a área de upload de documentos — nada
+  // de agendar/revisar ciclo ou gerar relatório de monitoramento, que ficam
+  // exclusivas de developer/admin/platform_admin (accessLevel 'full').
+  if (accessLevel === "verifier") {
+    return (
+      <section>
+        <h2 className="module-heading">
+          <ShieldCheck size={20} /> Verificação
+        </h2>
+        <DocumentosAuditoria projectId={projectId} canUpload />
+      </section>
+    );
+  }
+
   return (
     <section>
       <h2 className="module-heading">
@@ -251,6 +408,10 @@ export function VerificacaoPage() {
           )}
         </div>
       ))}
+
+      <div style={{ marginTop: "2rem", borderTop: "1px solid var(--sc-border)", paddingTop: "1.5rem" }}>
+        <DocumentosAuditoria projectId={projectId} canUpload />
+      </div>
     </section>
   );
 }

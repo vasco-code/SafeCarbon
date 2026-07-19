@@ -1,6 +1,9 @@
-// Aposenta (retire) um token já emitido — ação irreversível e distinta da
-// emissão (docs/04-arquitetura-tecnica-integracoes.md §3). Roda com o token
-// do próprio chamador (developer/admin do projeto).
+// Transfere a titularidade (holder_org_id) de um token já emitido — Carteira
+// de Ativos. Mesmo esqueleto de retire-credit: roda com o token do próprio
+// chamador (nunca service role), sem confiar só na RLS pra decidir permissão
+// (docs/04-arquitetura-tecnica-integracoes.md §3 — checagem explícita antes
+// de chamar a chain, importante porque um transfer() prematuro pode ter
+// efeito/custo irreversível ainda que a escrita no Postgres falhe depois).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { blockchainAdapter } from "../_shared/blockchain-adapter.ts";
 
@@ -30,9 +33,9 @@ Deno.serve(async (req) => {
       return json({ error: "Não autenticado." }, 401);
     }
 
-    const { blockchainTokenId, reason } = await req.json();
-    if (!blockchainTokenId || !reason) {
-      return json({ error: "blockchainTokenId e reason são obrigatórios." }, 400);
+    const { blockchainTokenId, toOrgId, note } = await req.json();
+    if (!blockchainTokenId || !toOrgId) {
+      return json({ error: "blockchainTokenId e toOrgId são obrigatórios." }, 400);
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -54,8 +57,11 @@ Deno.serve(async (req) => {
     if (tokenError || !token) {
       return json({ error: "Token não encontrado (ou sem permissão de leitura)." }, 404);
     }
-    if (token.status === "retired") {
-      return json({ error: "Token já está aposentado." }, 400);
+    if (token.status !== "active") {
+      return json({ error: `Token está em '${token.status}' — só é possível transferir tokens ativos.` }, 400);
+    }
+    if (token.holder_org_id === toOrgId) {
+      return json({ error: "O token já pertence a esta organização." }, 400);
     }
 
     // deno-lint-ignore no-explicit-any
@@ -64,10 +70,6 @@ Deno.serve(async (req) => {
       return json({ error: "Não foi possível resolver o projeto deste token." }, 400);
     }
 
-    // Checagem explícita de permissão antes de chamar a chain — importante
-    // porque, quando o adaptador simulado for substituído pelo real, uma
-    // chamada de retire() prematura pode ter efeito/custo irreversível ainda
-    // que a escrita no Postgres falhe depois por RLS.
     const { data: isAdmin } = await supabase.rpc("is_platform_admin");
     const { data: hasRole } = await supabase.rpc("has_project_role", {
       p_project_id: projectId,
@@ -80,20 +82,40 @@ Deno.serve(async (req) => {
     const isCurrentHolder = (memberships ?? []).some((m) => m.org_id === token.holder_org_id);
 
     if (!isAdmin && !hasRole && !isCurrentHolder) {
-      return json({ error: "Sem permissão para aposentar créditos deste projeto." }, 403);
+      return json({ error: "Sem permissão para transferir este crédito." }, 403);
     }
 
-    const chainResult = await blockchainAdapter.retire({ tokenId: token.token_id, reason });
+    const { data: toOrg } = await supabase.from("organizations").select("id, name").eq("id", toOrgId).maybeSingle();
+    if (!toOrg) {
+      return json({ error: "Organização de destino não encontrada." }, 404);
+    }
+
+    const chainResult = await blockchainAdapter.transfer({
+      tokenId: token.token_id,
+      fromOrgReference: token.holder_org_id ?? "",
+      toOrgReference: toOrgId,
+    });
 
     const { error: updateError } = await supabase
       .from("blockchain_tokens")
-      .update({ status: "retired", retired_at: chainResult.retiredAt, retired_reason: reason })
+      .update({ holder_org_id: toOrgId })
       .eq("id", blockchainTokenId);
     if (updateError) {
       return json({ error: updateError.message }, 400);
     }
 
-    return json({ txHash: chainResult.txHash, retiredAt: chainResult.retiredAt }, 200);
+    const { error: transferError } = await supabase.from("token_transfers").insert({
+      blockchain_token_id: blockchainTokenId,
+      from_org_id: token.holder_org_id,
+      to_org_id: toOrgId,
+      tx_hash: chainResult.txHash,
+      note: note ?? null,
+    });
+    if (transferError) {
+      return json({ error: transferError.message }, 400);
+    }
+
+    return json({ txHash: chainResult.txHash, transferredAt: chainResult.transferredAt }, 200);
   } catch (err) {
     return json({ error: err instanceof Error ? err.message : "Erro inesperado." }, 500);
   }

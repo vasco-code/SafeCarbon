@@ -59,12 +59,14 @@ Deno.serve(async (req) => {
 
     const { data: cycle } = await supabase
       .from("credit_calculation_cycles")
-      .select("project_id, period_year")
+      .select("project_id, period_year, carbon_projects(proponent_org_id)")
       .eq("id", batch.cycle_id)
       .maybeSingle();
     if (!cycle) {
       return json({ error: "Ciclo de cálculo não encontrado." }, 404);
     }
+    // deno-lint-ignore no-explicit-any
+    const proponentOrgId = (cycle as any).carbon_projects?.proponent_org_id ?? null;
 
     // Checagem explícita de permissão — não depender de qual policy de leitura
     // deixa passar, para nunca dar "sucesso" (mesmo que só devolvendo dados já
@@ -133,6 +135,10 @@ Deno.serve(async (req) => {
       tx_hash: chainResult.txHash,
       ledger_ref: chainResult.ledgerRef,
       status: "active",
+      // Créditos nascem no nome do proponente — é o dono real da redução;
+      // developer/admin operam a carteira via papel de projeto, sem
+      // precisar "ser dono" (ver Carteira de Ativos / token_transfers).
+      holder_org_id: proponentOrgId,
     });
     if (tokenError) {
       return json({ error: tokenError.message }, 400);

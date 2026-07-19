@@ -64,7 +64,11 @@ const METHODOLOGY_CALC_FUNCTIONS: Record<string, string> = {
 const DEFAULT_CALC_FUNCTION = "calculate-credit-cycle";
 
 export function CicloCalculoPage() {
-  const { projectId, year } = useParams<{ projectId: string; year: string }>();
+  const { projectId, year: yearParam } = useParams<{ projectId: string; year?: string }>();
+  // Antes dependia só do segmento de rota /ciclos/:year — agora tem seletor
+  // próprio (useState), com o param de URL como valor inicial só por
+  // compatibilidade enquanto a rota antiga ainda existir.
+  const [year, setYear] = useState(yearParam ?? String(new Date().getFullYear()));
   const [cycle, setCycle] = useState<CycleRow | null>(null);
   const [steps, setSteps] = useState<StepRow[]>([]);
   const [batch, setBatch] = useState<BatchRow | null>(null);
@@ -208,9 +212,14 @@ export function CicloCalculoPage() {
   return (
     <section>
       <h2 className="module-heading">
-        <Calculator size={20} /> Ciclo de Créditos {year}
+        <Calculator size={20} /> Ciclo de Créditos
       </h2>
       <p>Etapas do cálculo, resultado final e status de verificação.</p>
+
+      <div className="action-bar-field" style={{ maxWidth: "10rem", marginBottom: "1rem" }}>
+        <label htmlFor="cycle-year">Ano</label>
+        <input id="cycle-year" type="number" value={year} onChange={(e) => setYear(e.target.value)} />
+      </div>
 
       {cycle && (
         <p>
