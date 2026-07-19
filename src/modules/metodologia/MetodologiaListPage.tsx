@@ -25,7 +25,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function MetodologiaListPage() {
-  const { memberships } = useAuth();
+  const { memberships, canAdminister } = useAuth();
   const navigate = useNavigate();
   const [versions, setVersions] = useState<MethodologyVersionRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,12 +103,14 @@ export function MetodologiaListPage() {
       </h1>
       <p>Biblioteca de metodologias disponíveis para consulta pública.</p>
 
-      <button type="button" className="btn-primary" onClick={() => setShowForm((v) => !v)}>
-        <Plus size={15} />
-        {showForm ? "Cancelar" : "Nova metodologia"}
-      </button>
+      {canAdminister && (
+        <button type="button" className="btn-primary" onClick={() => setShowForm((v) => !v)}>
+          <Plus size={15} />
+          {showForm ? "Cancelar" : "Nova metodologia"}
+        </button>
+      )}
 
-      {showForm && (
+      {canAdminister && showForm && (
         <form onSubmit={handleCreate}>
           <label htmlFor="methodology-name">Nome</label>
           <input id="methodology-name" type="text" value={name} onChange={(e) => setName(e.target.value)} required />

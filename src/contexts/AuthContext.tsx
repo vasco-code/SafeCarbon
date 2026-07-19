@@ -23,6 +23,7 @@ interface AuthContextValue {
   memberships: OrgMembership[];
   isPlatformAdmin: boolean;
   canManageUsers: boolean;
+  canAdminister: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
@@ -92,8 +93,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const isPlatformAdmin = memberships.some((m) => m.orgType === "platform_operator");
+
+  // Premix (proponent) e VVB (verifier) só têm acesso ao descritivo do
+  // projeto e — no caso do proponent — à carteira de créditos; nunca devem
+  // gerenciar usuários/organizações ou criar projetos/metodologias, mesmo
+  // sendo owner/manager da própria organização. Restrito por org_type, não
+  // por member_role.
   const canManageUsers =
-    isPlatformAdmin || memberships.some((m) => m.memberRole === "owner" || m.memberRole === "manager");
+    isPlatformAdmin ||
+    memberships.some(
+      (m) => (m.memberRole === "owner" || m.memberRole === "manager") && m.orgType !== "proponent" && m.orgType !== "verifier",
+    );
+  const canAdminister = isPlatformAdmin || memberships.some((m) => m.orgType !== "proponent" && m.orgType !== "verifier");
 
   return (
     <AuthContext.Provider
@@ -104,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         memberships,
         isPlatformAdmin,
         canManageUsers,
+        canAdminister,
         signIn,
         signOut,
         requestPasswordReset,

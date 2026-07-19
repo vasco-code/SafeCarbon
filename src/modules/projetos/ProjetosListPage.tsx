@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ProjectRow {
   id: string;
@@ -137,6 +138,7 @@ function OrgPicker({
 
 export function ProjetosListPage() {
   const navigate = useNavigate();
+  const { canAdminister } = useAuth();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [orgs, setOrgs] = useState<OrgOption[]>([]);
   const [methodologyVersions, setMethodologyVersions] = useState<MethodologyVersionOption[]>([]);
@@ -228,11 +230,13 @@ export function ProjetosListPage() {
       <h1>Projetos de Carbono</h1>
       <p>Lista de projetos ativos, em validação e encerrados.</p>
 
-      <button type="button" className="btn-primary" onClick={() => setShowForm((v) => !v)}>
-        {showForm ? "Cancelar" : "+ Novo projeto"}
-      </button>
+      {canAdminister && (
+        <button type="button" className="btn-primary" onClick={() => setShowForm((v) => !v)}>
+          {showForm ? "Cancelar" : "+ Novo projeto"}
+        </button>
+      )}
 
-      {showForm && (
+      {canAdminister && showForm && (
         <form onSubmit={handleCreateProject}>
           <label htmlFor="project-name">Nome do projeto</label>
           <input id="project-name" type="text" value={name} onChange={(e) => setName(e.target.value)} required />
