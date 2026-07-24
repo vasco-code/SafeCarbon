@@ -537,6 +537,14 @@ textarea:focus {
   transition: background 120ms ease-out;
 }
 
+/* .btn-primary tem margin-top pensado pra separá-lo de inputs de formulário
+   (ver regra de button[type="submit"]) — sem isso, o botão "Abrir" (ou
+   qualquer .btn-primary numa célula de ação) fica desalinhado em relação
+   ao texto/badge da mesma linha. */
+.app-main td .btn-primary {
+  margin-top: 0;
+}
+
 .app-main tbody tr:hover {
   background: var(--sc-surface);
 }

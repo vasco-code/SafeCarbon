@@ -40,7 +40,7 @@ function Header() {
               </NavLink>
             )}
             <NavLink to="/pegada" className={({ isActive }) => (isActive ? "active" : "")}>
-              Pegada
+              Inventários
             </NavLink>
             {canManageUsers && (
               <>

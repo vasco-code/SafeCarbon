@@ -74,7 +74,7 @@ export function PegadaListPage() {
   return (
     <section>
       <h1 className="module-heading">
-        <Leaf size={22} /> Pegada de Carbono
+        <Leaf size={22} /> Inventários de Emissões
       </h1>
       <p>Inventários de emissões de GEE por organização e ano (GHG Protocol).</p>
 
