@@ -15,6 +15,19 @@ function co2eFossil(ctx: FactorContext, co2_t: number, ch4_t: number, n2o_t: num
   return co2_t * gwpOf(ctx, "CO2") + ch4_t * gwpOf(ctx, "CH4") + n2o_t * gwpOf(ctx, "N2O");
 }
 
+// Roteia a massa (t) de UM gás para o balde certo do `computed`: CO2/CH4/N2O
+// têm campos próprios; os demais (HFC/PFC/SF6/NF3...) vão em other_gases_t.
+// Usado onde o usuário relata a massa do gás direto (processos, agricultura,
+// fugitivas) — a conversão a CO2e é sempre massa × GWP do próprio gás.
+function gasMassBuckets(gas: string, mass_t: number): Pick<Computed, "co2_t" | "ch4_t" | "n2o_t" | "other_gases_t"> {
+  return {
+    co2_t: gas === "CO2" ? mass_t : 0,
+    ch4_t: gas === "CH4" ? mass_t : 0,
+    n2o_t: gas === "N2O" ? mass_t : 0,
+    other_gases_t: gas !== "CO2" && gas !== "CH4" && gas !== "N2O" ? { [gas]: mass_t } : undefined,
+  };
+}
+
 // Processos industriais e Agricultura compartilham a mesma matemática: uma
 // linha = massa de UM gás relatada direto (não há fator de atividade),
 // convertida a CO2e só pelo GWP do próprio gás — mais emissão/remoção de CO2
@@ -62,6 +75,51 @@ function calcFuelEnergyUpstream(data: ActivityData, ctx: FactorContext): CalcRes
     biogenic_co2_t: 0,
     co2e_t: co2eFossil(ctx, co2, ch4, n2o),
     factor_refs: [`wtt_fuel:${f.name_pt}`],
+    ar_version: ctx.arVersion,
+  };
+  return { ok: true, computed };
+}
+
+// Emissões fugitivas (Escopo 1). Cada método deriva a MASSA LÍQUIDA de gás
+// (kg) — que pode ser negativa (ex.: recuperação/absorção maior que a emissão,
+// ou aumento de estoque no período; a planilha admite) — e converte a CO2e só
+// pelo GWP do próprio gás. Ver FugitiveEmissionData em types.ts.
+function calcFugitive(data: ActivityData, ctx: FactorContext): CalcResult {
+  if (data.source_category !== "fugitive") return { ok: false, missingFactor: "tipo" };
+  const gwp = ctx.gwp.get(data.gas);
+  if (gwp == null) return { ok: false, missingFactor: `GWP para o gás ${data.gas}` };
+
+  let netKg: number;
+  switch (data.method) {
+    case "lifecycle":
+      netKg =
+        (data.charge_new_kg ?? 0) -
+        (data.capacity_new_kg ?? 0) +
+        (data.recharge_existing_kg ?? 0) +
+        (data.capacity_disposed_kg ?? 0) -
+        (data.recovered_kg ?? 0);
+      break;
+    case "mass_balance":
+      netKg =
+        (data.stock_initial_kg ?? 0) -
+        (data.stock_final_kg ?? 0) +
+        (data.transferred_kg ?? 0) -
+        (data.capacity_change_kg ?? 0);
+      break;
+    case "direct":
+      netKg = data.released_kg ?? 0;
+      break;
+    default:
+      return { ok: false, missingFactor: "método fugitivo inválido" };
+  }
+
+  const massT = netKg / 1000;
+  const buckets = gasMassBuckets(data.gas, massT);
+  const computed: Computed = {
+    ...buckets,
+    biogenic_co2_t: 0,
+    co2e_t: massT * gwp,
+    factor_refs: [`gwp:${data.gas}`],
     ar_version: ctx.arVersion,
   };
   return { ok: true, computed };
@@ -195,6 +253,7 @@ const calculators: Record<SourceCategory, Calculator> = {
     return { ok: true, computed };
   },
 
+  fugitive: calcFugitive,
   industrial_processes: calcDirectGasEmission,
   agriculture: calcDirectGasEmission,
   fuel_energy_upstream: calcFuelEnergyUpstream,

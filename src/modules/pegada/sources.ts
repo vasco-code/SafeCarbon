@@ -14,7 +14,7 @@ export const SOURCES: SourceMeta[] = [
   // Escopo 1
   { category: "stationary_combustion", label: "Combustão estacionária", scope: 1, implemented: true },
   { category: "mobile_combustion", label: "Combustão móvel", scope: 1, implemented: true },
-  { category: "fugitive", label: "Emissões fugitivas", scope: 1, implemented: false },
+  { category: "fugitive", label: "Emissões fugitivas", scope: 1, implemented: true },
   { category: "industrial_processes", label: "Processos industriais", scope: 1, implemented: true },
   { category: "agriculture", label: "Atividades de agricultura", scope: 1, implemented: true },
   { category: "land_use", label: "Mudança no uso do solo", scope: 1, implemented: false },

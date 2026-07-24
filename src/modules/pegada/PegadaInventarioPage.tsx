@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Leaf, Factory, Fuel, Zap, Plug, Plane, Bus, Lock, FlaskConical, Wheat, Droplets } from "lucide-react";
+import { ArrowLeft, Leaf, Factory, Fuel, Zap, Plug, Plane, Bus, Lock, FlaskConical, Wheat, Droplets, Wind } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { loadFactorContext, type FactorContext } from "./engine/factors";
 import { aggregate, type InventoryEntry } from "./engine/aggregate";
@@ -15,6 +15,7 @@ import { BusinessTravelSource } from "./sources/BusinessTravelSource";
 import { CommutingSource } from "./sources/CommutingSource";
 import { IndustrialProcessesSource } from "./sources/IndustrialProcessesSource";
 import { AgricultureSource } from "./sources/AgricultureSource";
+import { FugitiveSource } from "./sources/FugitiveSource";
 import { FuelEnergyUpstreamSource } from "./sources/FuelEnergyUpstreamSource";
 import { ImportPlanilhaPanel } from "./ImportPlanilhaPanel";
 
@@ -28,6 +29,7 @@ interface InventoryHeader {
 const SOURCE_ICONS: Record<string, typeof Factory> = {
   stationary_combustion: Factory,
   mobile_combustion: Fuel,
+  fugitive: Wind,
   electricity_location: Zap,
   electricity_market: Plug,
   business_travel: Plane,
@@ -169,6 +171,7 @@ export function PegadaInventarioPage() {
       <div className="project-tab-content">
         {active === "stationary_combustion" && <StationaryCombustionSource {...commonProps} entries={entriesOf("stationary_combustion")} />}
         {active === "mobile_combustion" && <MobileCombustionSource {...commonProps} entries={entriesOf("mobile_combustion")} />}
+        {active === "fugitive" && <FugitiveSource {...commonProps} entries={entriesOf("fugitive")} />}
         {active === "electricity_location" && <ElectricityLocationSource {...commonProps} entries={entriesOf("electricity_location")} defaultYear={header.inventory_year} />}
         {active === "electricity_market" && <ElectricityMarketSource {...commonProps} entries={entriesOf("electricity_market")} />}
         {active === "business_travel" && <BusinessTravelSource {...commonProps} entries={entriesOf("business_travel")} />}

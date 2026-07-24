@@ -13,6 +13,7 @@ export type Scope = 1 | 2 | 3;
 export type SourceCategory =
   | "stationary_combustion"
   | "mobile_combustion"
+  | "fugitive"
   | "electricity_location"
   | "electricity_market"
   | "business_travel"
@@ -24,6 +25,7 @@ export type SourceCategory =
 export const SCOPE_OF_SOURCE: Record<SourceCategory, Scope> = {
   stationary_combustion: 1,
   mobile_combustion: 1,
+  fugitive: 1,
   electricity_location: 2,
   electricity_market: 2,
   business_travel: 3,
@@ -99,6 +101,41 @@ export interface DirectGasEmissionData {
   biogenic_co2_removals_t?: number;
 }
 
+// Emissões fugitivas (Escopo 1) — aba "Emissões fugitivas" da planilha. Todos
+// os métodos reduzem a uma MASSA LÍQUIDA de gás (kg), convertida a CO2e só pelo
+// GWP do gás (ghg_gwp já tem os 34 gases: HFC/PFC/SF6/NF3 etc.). Três métodos,
+// espelhando as Opções 1/2 e a Tabela 5 (SF6/NF3) da planilha:
+//  - "lifecycle" (Opção 1, Estágio do Ciclo de Vida):
+//      líquido = carga_novas − capacidade_novas + recarga_existentes
+//                + capacidade_dispensadas − recuperada
+//  - "mass_balance" (Opção 2 + Tabela 5 SF6/NF3, Balanço de Massa):
+//      líquido = (estoque_inicial − estoque_final) + transferido − mudança_capacidade
+//      (VE + T − MC; para SF6/NF3 a mudança de capacidade é 0)
+//  - "direct": massa liberada informada direto (Tabela 6, "estimado a partir
+//      de outras ferramentas" / resultado da triagem).
+// FORA da Fase A (ficam para depois): compostos/blends (R-410A etc., exigem
+// tabela de composição gás→componentes com GWP ponderado) e a Opção 3 Triagem
+// por fator de tipo de equipamento (Tabelas 3-4, exigem tabela de fator nova).
+export type FugitiveMethod = "lifecycle" | "mass_balance" | "direct";
+
+export interface FugitiveEmissionData {
+  gas: string; // chave em ghg_gwp
+  method: FugitiveMethod;
+  // lifecycle (Opção 1) — kg
+  charge_new_kg?: number;
+  capacity_new_kg?: number;
+  recharge_existing_kg?: number;
+  capacity_disposed_kg?: number;
+  recovered_kg?: number;
+  // mass_balance (Opção 2 / Tabela 5 SF6-NF3) — kg
+  stock_initial_kg?: number;
+  stock_final_kg?: number;
+  transferred_kg?: number; // T = comprado − vendido/dispensado
+  capacity_change_kg?: number; // MC = mudança de capacidade (0 para SF6/NF3)
+  // direct — kg
+  released_kg?: number;
+}
+
 // Escopo 3 Categoria 3 (Atividades relacionadas a combustível e energia) —
 // Tabela 1 da aba "Emissões energia (upstream)": WTT (well-to-tank/cradle to
 // gate) do combustível já queimado direto (Escopo 1) — a mesma quantidade em
@@ -113,6 +150,7 @@ export interface FuelEnergyUpstreamData {
 export type ActivityData =
   | ({ source_category: "stationary_combustion" } & StationaryCombustionData)
   | ({ source_category: "mobile_combustion" } & MobileCombustionData)
+  | ({ source_category: "fugitive" } & FugitiveEmissionData)
   | ({ source_category: "electricity_location" } & ElectricityLocationData)
   | ({ source_category: "electricity_market" } & ElectricityMarketData)
   | ({ source_category: "business_travel" } & BusinessTravelData)
