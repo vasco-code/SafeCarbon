@@ -27,7 +27,14 @@ export function ImportPlanilhaPanel({
   ctx: FactorContext;
   reload: () => void;
 }) {
+  // O fator do SIN só existe até o último ano publicado — um inventário do ano
+  // corrente costuma não ter fator ainda. Default: o ano mais recente
+  // disponível que não ultrapasse o ano do inventário.
+  const gridYears = [...new Set([...ctx.grid.values()].map((g) => g.year))].sort((a, b) => b - a);
+  const defaultGridYear = gridYears.find((y) => y <= inventoryYear) ?? gridYears[0] ?? inventoryYear;
+
   const [sector, setSector] = useState<ActivitySector>("energy");
+  const [gridYear, setGridYear] = useState<number>(defaultGridYear);
   const [result, setResult] = useState<GhgImportResult | null>(null);
   const [prepared, setPrepared] = useState<Prepared[]>([]);
   const [failed, setFailed] = useState<string[]>([]);
@@ -43,7 +50,7 @@ export function ImportPlanilhaPanel({
     setDone(null);
     try {
       const wb = await readWorkbook(file);
-      const parsed = parseGhgWorkbook(wb, ctx, { inventoryYear, sector });
+      const parsed = parseGhgWorkbook(wb, ctx, { inventoryYear: gridYear, sector });
       const ok: Prepared[] = [];
       const bad: string[] = [];
       for (const row of parsed.rows) {
@@ -113,7 +120,25 @@ export function ImportPlanilhaPanel({
             ))}
           </select>
         </div>
+        {gridYears.length > 0 && (
+          <div className="action-bar-field">
+            <label htmlFor="imp-grid-year">Ano do fator do SIN (energia elétrica)</label>
+            <select id="imp-grid-year" value={gridYear} onChange={(e) => setGridYear(Number(e.target.value))}>
+              {gridYears.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
+      {gridYear !== inventoryYear && (
+        <p style={{ fontSize: "0.8125rem", color: "var(--sc-muted)", marginTop: 0 }}>
+          O fator do SIN de {inventoryYear} ainda não está publicado — usando o de {gridYear}, o mais recente
+          disponível.
+        </p>
+      )}
 
       <FileDropzone
         accept=".xlsx,.xlsm,.xls"
