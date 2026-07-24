@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export interface BrandingConfig {
@@ -12,14 +12,17 @@ export interface BrandingConfig {
   warning_oklch: string;
 }
 
+// Espelha o registro "default" de branding_configs — é o que já roda em
+// produção, então usá-lo como fallback evita o flash de outra paleta
+// enquanto a query ao Supabase não resolve.
 const DEFAULT_BRANDING: BrandingConfig = {
   subdomain: "default",
-  logo_url: null,
-  favicon_url: null,
-  primary_oklch: "oklch(0.440 0.150 269)",
-  accent_oklch: "oklch(0.700 0.130 195)",
-  success_oklch: "oklch(0.500 0.140 145)",
-  danger_oklch: "oklch(0.520 0.180 25)",
+  logo_url: "/logos/safecarbon-logo.png",
+  favicon_url: "/logos/safecarbon-logo.png",
+  primary_oklch: "oklch(0.444 0.100 145.0)",
+  accent_oklch: "oklch(0.820 0.360 273.0)",
+  success_oklch: "oklch(0.686 0.200 140.2)",
+  danger_oklch: "oklch(0.560 0.240 43.0)",
   warning_oklch: "oklch(0.680 0.150 70)",
 };
 
@@ -30,13 +33,43 @@ function getSubdomainFromHostname(): string {
   return parts[0];
 }
 
+function brandingCacheKey(subdomain: string): string {
+  return `sc-branding:${subdomain}`;
+}
+
+function readCachedBranding(subdomain: string): BrandingConfig | null {
+  try {
+    const raw = localStorage.getItem(brandingCacheKey(subdomain));
+    return raw ? (JSON.parse(raw) as BrandingConfig) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedBranding(subdomain: string, branding: BrandingConfig) {
+  try {
+    localStorage.setItem(brandingCacheKey(subdomain), JSON.stringify(branding));
+  } catch {
+    // localStorage indisponível (modo privado, quota) — segue sem cache
+  }
+}
+
 export function useBranding() {
-  const [branding, setBranding] = useState<BrandingConfig>(DEFAULT_BRANDING);
+  const subdomain = getSubdomainFromHostname();
+  const [branding, setBranding] = useState<BrandingConfig>(
+    () => readCachedBranding(subdomain) ?? DEFAULT_BRANDING,
+  );
   const [loading, setLoading] = useState(true);
+
+  // useLayoutEffect (não useEffect) para aplicar antes do primeiro paint —
+  // elimina o flash para tenants já cacheados de uma visita anterior.
+  useLayoutEffect(() => {
+    applyBrandingVars(branding);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     async function loadBranding() {
-      const subdomain = getSubdomainFromHostname();
       const { data, error } = await supabase
         .from("branding_configs")
         .select("*")
@@ -44,9 +77,10 @@ export function useBranding() {
         .single();
 
       if (data) {
-        console.log("Branding loaded:", data);
-        setBranding(data as BrandingConfig);
-        applyBrandingVars(data as BrandingConfig);
+        const loaded = data as BrandingConfig;
+        setBranding(loaded);
+        applyBrandingVars(loaded);
+        writeCachedBranding(subdomain, loaded);
       } else {
         console.log("No branding config found for subdomain:", subdomain, error);
         applyBrandingVars(DEFAULT_BRANDING);
@@ -55,7 +89,7 @@ export function useBranding() {
     }
 
     loadBranding();
-  }, []);
+  }, [subdomain]);
 
   return { branding, loading };
 }
