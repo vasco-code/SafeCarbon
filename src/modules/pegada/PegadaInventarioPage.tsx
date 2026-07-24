@@ -13,6 +13,7 @@ import { ElectricityLocationSource } from "./sources/ElectricityLocationSource";
 import { ElectricityMarketSource } from "./sources/ElectricityMarketSource";
 import { BusinessTravelSource } from "./sources/BusinessTravelSource";
 import { CommutingSource } from "./sources/CommutingSource";
+import { ImportPlanilhaPanel } from "./ImportPlanilhaPanel";
 
 interface InventoryHeader {
   id: string;
@@ -120,6 +121,15 @@ export function PegadaInventarioPage() {
           sub={`CO₂ biogênico à parte: ${totals.biogenicCo2.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} t`}
         />
       </div>
+
+      {!readOnly && (
+        <ImportPlanilhaPanel
+          inventoryId={inventoryId!}
+          inventoryYear={header.inventory_year}
+          ctx={ctx}
+          reload={loadEntries}
+        />
+      )}
 
       {[1, 2, 3].map((scope) => (
         <div key={scope} style={{ marginBottom: "0.5rem" }}>
