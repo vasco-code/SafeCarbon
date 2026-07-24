@@ -14,10 +14,13 @@
   --sc-text-xl: 1.25rem;
 
   /* Marca — valores do branding "default" (branding_configs), para bater com
-     o que é aplicado em runtime e evitar flash antes do useBranding rodar */
+     o que é aplicado em runtime e evitar flash antes do useBranding rodar.
+     --sc-primary-dark/--sc-primary-hover NÃO vêm de branding_configs (não são
+     tocados por applyBrandingVars) — mantidos no azul original de propósito:
+     é o que dá o gradiente bicolor verde→azul do painel de login. */
   --sc-primary: oklch(0.444 0.100 145.0);
-  --sc-primary-dark: oklch(0.364 0.100 145.0);
-  --sc-primary-hover: oklch(0.364 0.100 145.0);
+  --sc-primary-dark: oklch(0.360 0.140 269);
+  --sc-primary-hover: oklch(0.360 0.140 269);
   --sc-accent: oklch(0.820 0.360 273.0);
   --sc-success: oklch(0.686 0.200 140.2);
   --sc-danger: oklch(0.560 0.240 43.0);
