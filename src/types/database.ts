@@ -575,6 +575,21 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["ghg_wtt_fuel_factors"]["Row"]>;
         Relationships: [];
       };
+      ghg_effluent_factors: {
+        Row: {
+          id: string;
+          domain: string;
+          treatment_type: string;
+          mcf: number;
+          ef_ch4_kg_dbo: number;
+          ef_ch4_kg_dqo: number;
+          ef_n2o_n_kg_n: number;
+          source: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ghg_effluent_factors"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["ghg_effluent_factors"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: {
       production_period_summary: {

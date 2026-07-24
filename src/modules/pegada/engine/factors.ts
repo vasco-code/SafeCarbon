@@ -49,12 +49,27 @@ export interface WttFuelFactor {
   n2o_kg_gj: number;
 }
 
+// Escopo 1 — Efluentes. Fator por tipo de tratamento (aba "Listas",
+// eflu_tipo_tratamento_MCF_domestico/_industrial). MCF fica guardado para
+// rastreabilidade; o cálculo usa os EF já derivados: kgCH4/kgDBO ou kgCH4/kgDQO
+// (conforme a unidade da carga orgânica informada) e kgN2O-N/kgN (o motor
+// aplica 44/28 para chegar a kgN2O/kgN).
+export interface EffluentFactor {
+  domain: "domestic" | "industrial";
+  treatment_type: string;
+  mcf: number;
+  ef_ch4_kg_dbo: number;
+  ef_ch4_kg_dqo: number;
+  ef_n2o_n_kg_n: number;
+}
+
 export interface FactorContext {
   fuels: Map<number, FuelFactor>;
   grid: Map<string, GridFactor>; // key `${region}:${year}` (mês agregado no anual)
   generic: Map<string, GenericFactor>; // key `${source_category}:${factor_key}`
   gwp: Map<string, number>;
   wttFuels: Map<string, WttFuelFactor>; // key: name_pt normalizado
+  effluents: Map<string, EffluentFactor>; // key: `${domain}:${treatment_type}`
   arVersion: string;
 }
 
@@ -64,16 +79,20 @@ function gridKey(region: string, year: number) {
 export function genericKey(sourceCategory: string, factorKey: string) {
   return `${sourceCategory}:${factorKey}`;
 }
+export function effluentKey(domain: string, treatmentType: string) {
+  return `${domain}:${treatmentType}`;
+}
 
 // Carrega todas as tabelas de fator uma vez e indexa em Map (dado de
 // referência, pequeno e cacheável — ~800 combustíveis são dezenas de KB).
 export async function loadFactorContext(): Promise<FactorContext> {
-  const [fuelsRes, gridRes, genericRes, gwpRes, wttRes] = await Promise.all([
+  const [fuelsRes, gridRes, genericRes, gwpRes, wttRes, effluentRes] = await Promise.all([
     supabase.from("ghg_fuel_factors").select("*"),
     supabase.from("ghg_grid_factors").select("*"),
     supabase.from("ghg_generic_factors").select("*"),
     supabase.from("ghg_gwp").select("*"),
     supabase.from("ghg_wtt_fuel_factors").select("*"),
+    supabase.from("ghg_effluent_factors").select("*"),
   ]);
 
   const fuels = new Map<number, FuelFactor>();
@@ -153,7 +172,21 @@ export async function loadFactorContext(): Promise<FactorContext> {
     });
   }
 
-  return { fuels, grid, generic, gwp, wttFuels, arVersion: AR_VERSION };
+  const effluents = new Map<string, EffluentFactor>();
+  for (const r of (effluentRes.data ?? []) as Record<string, number | string>[]) {
+    const domain = String(r.domain) as "domestic" | "industrial";
+    const treatment_type = String(r.treatment_type);
+    effluents.set(effluentKey(domain, treatment_type), {
+      domain,
+      treatment_type,
+      mcf: Number(r.mcf ?? 0),
+      ef_ch4_kg_dbo: Number(r.ef_ch4_kg_dbo ?? 0),
+      ef_ch4_kg_dqo: Number(r.ef_ch4_kg_dqo ?? 0),
+      ef_n2o_n_kg_n: Number(r.ef_n2o_n_kg_n ?? 0),
+    });
+  }
+
+  return { fuels, grid, generic, gwp, wttFuels, effluents, arVersion: AR_VERSION };
 }
 
 export function getGrid(ctx: FactorContext, year: number, region = "SIN"): GridFactor | undefined {

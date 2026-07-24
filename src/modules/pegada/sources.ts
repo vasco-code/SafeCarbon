@@ -19,7 +19,7 @@ export const SOURCES: SourceMeta[] = [
   { category: "agriculture", label: "Atividades de agricultura", scope: 1, implemented: true },
   { category: "land_use", label: "Mudança no uso do solo", scope: 1, implemented: false },
   { category: "solid_waste", label: "Resíduos sólidos", scope: 1, implemented: false },
-  { category: "effluents", label: "Efluentes", scope: 1, implemented: false },
+  { category: "effluents", label: "Efluentes", scope: 1, implemented: true },
   // Escopo 2
   { category: "electricity_location", label: "Energia elétrica (localização)", scope: 2, implemented: true },
   { category: "electricity_market", label: "Energia elétrica (escolha de compra)", scope: 2, implemented: true },

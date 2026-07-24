@@ -1,5 +1,5 @@
 import type { ActivityData, CalcResult, Computed, SourceCategory } from "./types";
-import { genericKey, getGrid, type FactorContext } from "./factors";
+import { effluentKey, genericKey, getGrid, type FactorContext } from "./factors";
 
 // Motor de cálculo determinístico, por source_category. Cada função recebe o
 // activity_data cru + o contexto de fatores indexado e devolve o `computed`
@@ -120,6 +120,59 @@ function calcFugitive(data: ActivityData, ctx: FactorContext): CalcResult {
     biogenic_co2_t: 0,
     co2e_t: massT * gwp,
     factor_refs: [`gwp:${data.gas}`],
+    ar_version: ctx.arVersion,
+  };
+  return { ok: true, computed };
+}
+
+// Efluentes (Escopo 1). Ver EffluentData em types.ts para a metodologia.
+function calcEffluent(data: ActivityData, ctx: FactorContext): CalcResult {
+  if (data.source_category !== "effluents") return { ok: false, missingFactor: "tipo" };
+
+  if (data.method === "direct") {
+    const co2 = data.co2_t ?? 0;
+    const ch4 = data.ch4_t ?? 0;
+    const n2o = data.n2o_t ?? 0;
+    const computed: Computed = {
+      co2_t: co2,
+      ch4_t: ch4,
+      n2o_t: n2o,
+      biogenic_co2_t: data.biogenic_co2_t ?? 0,
+      co2e_t: co2eFossil(ctx, co2, ch4, n2o),
+      factor_refs: ["user_supplied"],
+      ar_version: ctx.arVersion,
+    };
+    return { ok: true, computed };
+  }
+
+  // detailed — tratamento único
+  if (!data.domain || !data.treatment_type) return { ok: false, missingFactor: "tipo de tratamento" };
+  const f = ctx.effluents.get(effluentKey(data.domain, data.treatment_type));
+  if (!f) return { ok: false, missingFactor: `tratamento de efluente ${data.domain}/${data.treatment_type}` };
+
+  const q = data.volume_m3 ?? 0;
+  const load = data.organic_load_kg_m3 ?? 0;
+  const removed = data.organic_removed_kg_m3 ?? 0;
+  const efCh4 = data.organic_unit === "dqo" ? f.ef_ch4_kg_dqo : f.ef_ch4_kg_dbo;
+  const recovered = data.ch4_recovered_t ?? 0;
+  const ch4 = (q * (load - removed) * efCh4) / 1000 - recovered;
+
+  const n = data.nitrogen_kg_m3 ?? 0;
+  const efN2o = (44 / 28) * f.ef_n2o_n_kg_n; // kgN2O-N/kgN → kgN2O/kgN
+  const n2o = (q * n * efN2o) / 1000;
+
+  // A planilha zera o CO2e do lançamento inteiro quando o CH4 líquido é
+  // negativo (recuperação maior que a geração) — não apenas a parcela de CH4.
+  const co2e = ch4 < 0 ? 0 : ch4 * gwpOf(ctx, "CH4") + n2o * gwpOf(ctx, "N2O");
+  const biogenic = data.biogas_flared ? recovered * (44 / 16) : 0;
+
+  const computed: Computed = {
+    co2_t: 0,
+    ch4_t: ch4,
+    n2o_t: n2o,
+    biogenic_co2_t: biogenic,
+    co2e_t: co2e,
+    factor_refs: [`effluent:${data.domain}:${data.treatment_type}`, `unit:${data.organic_unit ?? "dbo"}`],
     ar_version: ctx.arVersion,
   };
   return { ok: true, computed };
@@ -256,6 +309,7 @@ const calculators: Record<SourceCategory, Calculator> = {
   fugitive: calcFugitive,
   industrial_processes: calcDirectGasEmission,
   agriculture: calcDirectGasEmission,
+  effluents: calcEffluent,
   fuel_energy_upstream: calcFuelEnergyUpstream,
 };
 

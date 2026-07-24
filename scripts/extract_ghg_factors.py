@@ -192,6 +192,41 @@ def print_wtt_seed(fe):
         )
 
 
+def extract_effluent_factors(listas):
+    """Fatores de tratamento de efluentes (Escopo 1) — aba "Listas",
+    eflu_tipo_tratamento_MCF_domestico (CA3:CE14) e _industrial (CA17:CE25).
+    Colunas: CA=tipo, CB=MCF, CC=EF kgCH4/kgDBO, CD=EF kgCH4/kgDQO, CE=kgN2O-N/kgN."""
+    rows = []
+    for domain, r1, r2 in (("domestic", 3, 14), ("industrial", 17, 25)):
+        for r in range(r1, r2 + 1):
+            name = listas.cell(row=r, column=79).value  # CA
+            if not name or str(name).strip() in ("-", "", "Tipos de tratamento"):
+                continue
+            rows.append({
+                "domain": domain,
+                "treatment_type": str(name).strip(),
+                "mcf": listas.cell(row=r, column=80).value,
+                "ef_ch4_kg_dbo": listas.cell(row=r, column=81).value,
+                "ef_ch4_kg_dqo": listas.cell(row=r, column=82).value,
+                "ef_n2o_n_kg_n": listas.cell(row=r, column=83).value,
+            })
+    return rows
+
+
+def print_effluent_seed(listas):
+    """Seed isolado de ghg_effluent_factors (Escopo 1, aba Efluentes)."""
+    efl = extract_effluent_factors(listas)
+    print("-- Seed de ghg_effluent_factors (tratamento de efluentes, Escopo 1) — gerado por scripts/extract_ghg_factors.py --effluent")
+    print(f"-- {len(efl)} tipos de tratamento (domésticos + industriais)\n")
+    print("delete from ghg_effluent_factors;\n")
+    for e in efl:
+        print(
+            "insert into ghg_effluent_factors (domain, treatment_type, mcf, ef_ch4_kg_dbo, ef_ch4_kg_dqo, ef_n2o_n_kg_n, source) values ("
+            f"{sqlstr(e['domain'])}, {sqlstr(e['treatment_type'])}, {num0(e['mcf'])}, {num0(e['ef_ch4_kg_dbo'])}, "
+            f"{num0(e['ef_ch4_kg_dqo'])}, {num0(e['ef_n2o_n_kg_n'])}, 'IPCC 2006 via GHG Protocol FGV v2026.0.1');"
+        )
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     flags = [a for a in sys.argv[1:] if a.startswith("--")]
@@ -202,6 +237,10 @@ def main():
 
     if "--wtt" in flags:
         print_wtt_seed(fe)
+        return
+
+    if "--effluent" in flags:
+        print_effluent_seed(wb["Listas"])
         return
 
     fuels = extract_fuels(fe)

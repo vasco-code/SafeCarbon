@@ -20,6 +20,7 @@ export type SourceCategory =
   | "commuting"
   | "industrial_processes"
   | "agriculture"
+  | "effluents"
   | "fuel_energy_upstream";
 
 export const SCOPE_OF_SOURCE: Record<SourceCategory, Scope> = {
@@ -32,6 +33,7 @@ export const SCOPE_OF_SOURCE: Record<SourceCategory, Scope> = {
   commuting: 3,
   industrial_processes: 1,
   agriculture: 1,
+  effluents: 1,
   fuel_energy_upstream: 3,
 };
 
@@ -136,6 +138,39 @@ export interface FugitiveEmissionData {
   released_kg?: number;
 }
 
+// Escopo 1 — Efluentes (aba "Efluentes"). Dois métodos:
+//  - "detailed": tratamento único (Passos 3-6 da planilha). Metodologia IPCC:
+//      CH4 (t) = Q × (carga_org − carga_removida) × EF_CH4[DBO|DQO] / 1000
+//                − CH4_recuperado
+//      N2O (t) = Q × N × EF_N2O / 1000, com EF_N2O = (44/28) × (kgN2O-N/kgN)
+//      CO2e = 0 se CH4 líquido < 0 (over-recuperação), senão CH4·GWP + N2O·GWP.
+//      CO2 biogênico = CH4_recuperado × 44/16 quando o biogás é queimado em flare
+//      (o metano do efluente é de origem biogênica).
+//  - "direct": relato direto de CO2/CH4/N2O (Tabela 2 da aba, "estimado a
+//      partir de outras ferramentas") — CO2e por GWP AR5.
+// FORA da Fase A: tratamento sequencial (Passos 7-10) e disposição final
+// separada (Passos 11-12); estimativa doméstica per capita (kgDBO/pessoa.dia).
+export type EffluentMethod = "detailed" | "direct";
+
+export interface EffluentData {
+  method: EffluentMethod;
+  // detailed
+  domain?: "domestic" | "industrial";
+  treatment_type?: string; // chave em ghg_effluent_factors
+  volume_m3?: number; // Q — vazão anual
+  organic_unit?: "dbo" | "dqo";
+  organic_load_kg_m3?: number; // carga orgânica degradável
+  organic_removed_kg_m3?: number; // removida com o lodo (opcional)
+  nitrogen_kg_m3?: number; // N no efluente (opcional → N2O)
+  ch4_recovered_t?: number; // CH4 recuperado (opcional)
+  biogas_flared?: boolean; // biogás recuperado queimado em flare → CO2 biogênico
+  // direct
+  co2_t?: number;
+  ch4_t?: number;
+  n2o_t?: number;
+  biogenic_co2_t?: number;
+}
+
 // Escopo 3 Categoria 3 (Atividades relacionadas a combustível e energia) —
 // Tabela 1 da aba "Emissões energia (upstream)": WTT (well-to-tank/cradle to
 // gate) do combustível já queimado direto (Escopo 1) — a mesma quantidade em
@@ -157,6 +192,7 @@ export type ActivityData =
   | ({ source_category: "commuting" } & CommutingData)
   | ({ source_category: "industrial_processes" } & DirectGasEmissionData)
   | ({ source_category: "agriculture" } & DirectGasEmissionData)
+  | ({ source_category: "effluents" } & EffluentData)
   | ({ source_category: "fuel_energy_upstream" } & FuelEnergyUpstreamData);
 
 // ---- computed (saída do cálculo, gravada junto no banco) ----
