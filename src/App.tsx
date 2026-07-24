@@ -39,6 +39,9 @@ function Header() {
                 Carteira
               </NavLink>
             )}
+            <NavLink to="/pegada" className={({ isActive }) => (isActive ? "active" : "")}>
+              Pegada
+            </NavLink>
             {canManageUsers && (
               <>
                 <NavLink to="/usuarios" className={({ isActive }) => (isActive ? "active" : "")}>

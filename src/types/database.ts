@@ -452,6 +452,116 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["audit_logs"]["Row"]>;
         Relationships: [];
       };
+      ghg_inventories: {
+        Row: {
+          id: string;
+          organization_id: string;
+          inventory_year: number;
+          name: string | null;
+          status: "draft" | "final";
+          responsible_name: string | null;
+          responsible_phone: string | null;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ghg_inventories"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["ghg_inventories"]["Row"]>;
+        Relationships: [];
+      };
+      ghg_activity_entries: {
+        Row: {
+          id: string;
+          inventory_id: string;
+          scope: number;
+          source_category: string;
+          source_ref: string | null;
+          description: string | null;
+          activity_data: Record<string, unknown>;
+          computed: Record<string, unknown>;
+          co2e_t: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ghg_activity_entries"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["ghg_activity_entries"]["Row"]>;
+        Relationships: [];
+      };
+      ghg_fuel_factors: {
+        Row: {
+          id: string;
+          ref_no: number | null;
+          name_pt: string;
+          name_en: string | null;
+          unit: string;
+          pci_gj_t: number | null;
+          density_kg_unit: number | null;
+          co2_kg_tj: number | null;
+          co2_kg_un: number;
+          ch4_kg_un_energy: number;
+          ch4_kg_un_manufacturing: number;
+          ch4_kg_un_commercial: number;
+          ch4_kg_un_residential: number;
+          n2o_kg_un_energy: number;
+          n2o_kg_un_manufacturing: number;
+          n2o_kg_un_commercial: number;
+          n2o_kg_un_residential: number;
+          is_biofuel: boolean;
+          source_ref: string | null;
+          source: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ghg_fuel_factors"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["ghg_fuel_factors"]["Row"]>;
+        Relationships: [];
+      };
+      ghg_grid_factors: {
+        Row: {
+          id: string;
+          year: number;
+          month: number | null;
+          region: string;
+          method: string;
+          co2_t_mwh: number;
+          co2_upstream_t_mwh: number | null;
+          ch4_t_mwh: number;
+          n2o_t_mwh: number;
+          source: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ghg_grid_factors"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["ghg_grid_factors"]["Row"]>;
+        Relationships: [];
+      };
+      ghg_generic_factors: {
+        Row: {
+          id: string;
+          source_category: string;
+          factor_key: string;
+          description: string | null;
+          unit: string | null;
+          co2_kg: number;
+          ch4_kg: number;
+          n2o_kg: number;
+          co2e_kg: number | null;
+          biogenic_co2_kg: number;
+          meta: Record<string, unknown> | null;
+          source_ref: string | null;
+          source: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ghg_generic_factors"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["ghg_generic_factors"]["Row"]>;
+        Relationships: [];
+      };
+      ghg_gwp: {
+        Row: {
+          gas: string;
+          gwp: number;
+          ar_version: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ghg_gwp"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["ghg_gwp"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: {
       production_period_summary: {

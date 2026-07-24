@@ -27,6 +27,8 @@ import { CicloCalculoPage } from "@/modules/creditos/CicloCalculoPage";
 import { VerificacaoPage } from "@/modules/creditos/VerificacaoPage";
 import { DistribuicaoPage } from "@/modules/distribuicao/DistribuicaoPage";
 import { CarteiraAtivosPage } from "@/modules/carteira/CarteiraAtivosPage";
+import { PegadaListPage } from "@/modules/pegada/PegadaListPage";
+import { PegadaInventarioPage } from "@/modules/pegada/PegadaInventarioPage";
 import { VerificarTokenPage } from "@/modules/verificacao-publica/VerificarTokenPage";
 import Index from "@/pages/Index";
 
@@ -48,6 +50,8 @@ export function AppRoutes() {
         <Route path="/admin/branding" element={<BrandingAdminPage />} />
         <Route path="/auditoria" element={<AuditoriaPage />} />
         <Route path="/carteira" element={<CarteiraAtivosPage />} />
+        <Route path="/pegada" element={<PegadaListPage />} />
+        <Route path="/pegada/:inventoryId" element={<PegadaInventarioPage />} />
 
         <Route path="/metodologias" element={<MetodologiaListPage />} />
         <Route path="/metodologias/:versionId" element={<MetodologiaDetailPage />} />
