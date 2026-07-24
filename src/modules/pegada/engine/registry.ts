@@ -15,6 +15,35 @@ function co2eFossil(ctx: FactorContext, co2_t: number, ch4_t: number, n2o_t: num
   return co2_t * gwpOf(ctx, "CO2") + ch4_t * gwpOf(ctx, "CH4") + n2o_t * gwpOf(ctx, "N2O");
 }
 
+// Processos industriais e Agricultura compartilham a mesma matemática: uma
+// linha = massa de UM gás relatada direto (não há fator de atividade),
+// convertida a CO2e só pelo GWP do próprio gás — mais emissão/remoção de CO2
+// biogênico digitadas à parte (não fazem parte do CO2e do escopo).
+function calcDirectGasEmission(data: ActivityData, ctx: FactorContext): CalcResult {
+  if (data.source_category !== "industrial_processes" && data.source_category !== "agriculture") {
+    return { ok: false, missingFactor: "tipo" };
+  }
+  const gwp = ctx.gwp.get(data.gas);
+  if (gwp == null) return { ok: false, missingFactor: `GWP para o gás ${data.gas}` };
+
+  const isCo2 = data.gas === "CO2";
+  const isCh4 = data.gas === "CH4";
+  const isN2o = data.gas === "N2O";
+
+  const computed: Computed = {
+    co2_t: isCo2 ? data.emitted_t : 0,
+    ch4_t: isCh4 ? data.emitted_t : 0,
+    n2o_t: isN2o ? data.emitted_t : 0,
+    other_gases_t: !isCo2 && !isCh4 && !isN2o ? { [data.gas]: data.emitted_t } : undefined,
+    biogenic_co2_t: data.biogenic_co2_emissions_t ?? 0,
+    biogenic_co2_removals_t: data.biogenic_co2_removals_t ?? 0,
+    co2e_t: data.emitted_t * gwp,
+    factor_refs: [`gwp:${data.gas}`],
+    ar_version: ctx.arVersion,
+  };
+  return { ok: true, computed };
+}
+
 type Calculator = (data: ActivityData, ctx: FactorContext) => CalcResult;
 
 const calculators: Record<SourceCategory, Calculator> = {
@@ -142,6 +171,9 @@ const calculators: Record<SourceCategory, Calculator> = {
     };
     return { ok: true, computed };
   },
+
+  industrial_processes: calcDirectGasEmission,
+  agriculture: calcDirectGasEmission,
 };
 
 export function calculate(data: ActivityData, ctx: FactorContext): CalcResult {

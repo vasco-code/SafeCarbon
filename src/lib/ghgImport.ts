@@ -113,6 +113,22 @@ function resolveFuelRef(ctx: FactorContext, fuelName: string): number | null {
   return null;
 }
 
+// A coluna "Gás de Efeito Estufa (GEE)" traz ora o código direto ("HFC-23"),
+// ora o nome descritivo com o código entre parênteses ("Óxido nitroso (N2O)").
+function resolveGasKey(ctx: FactorContext, label: string): string | null {
+  const raw = str(label);
+  if (!raw) return null;
+  const parenMatch = raw.match(/\(([^)]+)\)\s*$/);
+  const candidate = parenMatch ? parenMatch[1].trim() : raw;
+  for (const key of ctx.gwp.keys()) {
+    if (key.toLowerCase() === candidate.toLowerCase()) return key;
+  }
+  for (const key of ctx.gwp.keys()) {
+    if (normalize(key) === normalize(candidate)) return key;
+  }
+  return null;
+}
+
 function resolveGenericKey(ctx: FactorContext, category: string, label: string): string | null {
   const target = normalize(label);
   if (!target) return null;
@@ -260,6 +276,70 @@ export function parseGhgWorkbook(
         sourceRef: str(r[1]),
         description: str(r[2]),
         data: { source_category: "commuting", factor_key: key, passengers, distance_km: totalKm },
+      });
+    }
+  }
+
+  // ---- Processos industriais: header r30, exemplo r31, dados r32+ ----
+  const industrial = findSheet(wb, ["processos industriais"]);
+  if (industrial) {
+    sheetsFound.push(industrial);
+    const g = grid(wb, industrial);
+    const h = findHeaderRow(g, "registro da fonte");
+    const end = sectionEnd(g, h + 1);
+    for (let i = h + 1; h >= 0 && i < end; i++) {
+      const r = g[i] ?? [];
+      if (isExample(r)) continue;
+      const gasLabel = str(r[4]);
+      const emitted = num(r[5]);
+      if (!gasLabel || !emitted) continue;
+      const gas = resolveGasKey(ctx, gasLabel);
+      if (!gas) {
+        skipped.push({ sheet: industrial, reason: "Gás não reconhecido", detail: gasLabel });
+        continue;
+      }
+      rows.push({
+        sourceRef: str(r[1]),
+        description: [str(r[2]), str(r[3])].filter(Boolean).join(" — "),
+        data: {
+          source_category: "industrial_processes",
+          gas,
+          emitted_t: emitted,
+          biogenic_co2_emissions_t: num(r[8]) || undefined,
+          biogenic_co2_removals_t: num(r[9]) || undefined,
+        },
+      });
+    }
+  }
+
+  // ---- Atividades de agricultura: header r33, exemplo r34, dados r35+ ----
+  const agriculture = findSheet(wb, ["atividades de agricultura"]);
+  if (agriculture) {
+    sheetsFound.push(agriculture);
+    const g = grid(wb, agriculture);
+    const h = findHeaderRow(g, "registro da fonte");
+    const end = sectionEnd(g, h + 1);
+    for (let i = h + 1; h >= 0 && i < end; i++) {
+      const r = g[i] ?? [];
+      if (isExample(r)) continue;
+      const gasLabel = str(r[4]);
+      const emitted = num(r[5]);
+      if (!gasLabel || !emitted) continue;
+      const gas = resolveGasKey(ctx, gasLabel);
+      if (!gas) {
+        skipped.push({ sheet: agriculture, reason: "Gás não reconhecido", detail: gasLabel });
+        continue;
+      }
+      rows.push({
+        sourceRef: str(r[1]),
+        description: [str(r[2]), str(r[3])].filter(Boolean).join(" — "),
+        data: {
+          source_category: "agriculture",
+          gas,
+          emitted_t: emitted,
+          biogenic_co2_emissions_t: num(r[8]) || undefined,
+          biogenic_co2_removals_t: num(r[9]) || undefined,
+        },
       });
     }
   }

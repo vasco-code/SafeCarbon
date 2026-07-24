@@ -6,6 +6,16 @@
 
 export const AR_VERSION = "AR5";
 
+// Rótulos em português dos gases mais comuns (Processos industriais/
+// Agricultura). Famílias HFC/PFC já são razoavelmente legíveis como chave.
+export const GAS_LABELS: Record<string, string> = {
+  CO2: "Dióxido de carbono (CO2)",
+  CH4: "Metano (CH4)",
+  N2O: "Óxido nitroso (N2O)",
+  SF6: "Hexafluoreto de enxofre (SF6)",
+  NF3: "Trifluoreto de nitrogênio (NF3)",
+};
+
 export const GWP_AR5: Record<string, number> = {
   CO2: 1,
   CH4: 28,

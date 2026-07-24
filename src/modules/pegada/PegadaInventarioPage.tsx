@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Leaf, Factory, Fuel, Zap, Plug, Plane, Bus, Lock } from "lucide-react";
+import { ArrowLeft, Leaf, Factory, Fuel, Zap, Plug, Plane, Bus, Lock, FlaskConical, Wheat } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { loadFactorContext, type FactorContext } from "./engine/factors";
 import { aggregate, type InventoryEntry } from "./engine/aggregate";
@@ -13,6 +13,8 @@ import { ElectricityLocationSource } from "./sources/ElectricityLocationSource";
 import { ElectricityMarketSource } from "./sources/ElectricityMarketSource";
 import { BusinessTravelSource } from "./sources/BusinessTravelSource";
 import { CommutingSource } from "./sources/CommutingSource";
+import { IndustrialProcessesSource } from "./sources/IndustrialProcessesSource";
+import { AgricultureSource } from "./sources/AgricultureSource";
 import { ImportPlanilhaPanel } from "./ImportPlanilhaPanel";
 
 interface InventoryHeader {
@@ -29,6 +31,8 @@ const SOURCE_ICONS: Record<string, typeof Factory> = {
   electricity_market: Plug,
   business_travel: Plane,
   commuting: Bus,
+  industrial_processes: FlaskConical,
+  agriculture: Wheat,
 };
 
 function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -118,7 +122,7 @@ export function PegadaInventarioPage() {
         <KpiCard
           label="Total"
           value={`${totals.total.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e`}
-          sub={`CO₂ biogênico à parte: ${totals.biogenicCo2.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} t`}
+          sub={`CO₂ biogênico à parte: +${totals.biogenicCo2.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} / -${totals.biogenicCo2Removals.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} t`}
         />
       </div>
 
@@ -167,6 +171,8 @@ export function PegadaInventarioPage() {
         {active === "electricity_market" && <ElectricityMarketSource {...commonProps} entries={entriesOf("electricity_market")} />}
         {active === "business_travel" && <BusinessTravelSource {...commonProps} entries={entriesOf("business_travel")} />}
         {active === "commuting" && <CommutingSource {...commonProps} entries={entriesOf("commuting")} />}
+        {active === "industrial_processes" && <IndustrialProcessesSource {...commonProps} entries={entriesOf("industrial_processes")} />}
+        {active === "agriculture" && <AgricultureSource {...commonProps} entries={entriesOf("agriculture")} />}
       </div>
     </section>
   );

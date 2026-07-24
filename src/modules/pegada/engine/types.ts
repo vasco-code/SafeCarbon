@@ -5,15 +5,20 @@
 
 export type Scope = 1 | 2 | 3;
 
-// Fase 1: 6 fontes. As demais entram em fases seguintes só adicionando novos
-// valores aqui + uma função no registry, sem migração.
+// Fase 1: 6 fontes. Fase 2 adiciona industrial_processes/agriculture (mesmo
+// padrão: gás + massa emitida direto, GWP faz a conversão). As demais
+// (fugitivas, mudança do uso do solo, resíduos sólidos, efluentes) são
+// metodologias multi-etapa (FOD de aterro, estoque de carbono, DBO/DQO) que
+// exigem tabelas de fator próprias — tratadas fonte a fonte, não em lote.
 export type SourceCategory =
   | "stationary_combustion"
   | "mobile_combustion"
   | "electricity_location"
   | "electricity_market"
   | "business_travel"
-  | "commuting";
+  | "commuting"
+  | "industrial_processes"
+  | "agriculture";
 
 export const SCOPE_OF_SOURCE: Record<SourceCategory, Scope> = {
   stationary_combustion: 1,
@@ -22,6 +27,8 @@ export const SCOPE_OF_SOURCE: Record<SourceCategory, Scope> = {
   electricity_market: 2,
   business_travel: 3,
   commuting: 3,
+  industrial_processes: 1,
+  agriculture: 1,
 };
 
 // Setor de atividade — os fatores de CH4/N2O da combustão variam por setor
@@ -78,13 +85,27 @@ export interface CommutingData {
   distance_km: number; // por trecho/período, distância total percorrida
 }
 
+// Processos industriais e Agricultura: o usuário relata a massa emitida do
+// gás diretamente (não há fator de atividade — a planilha só converte por
+// GWP). Emissões/remoções de CO2 biogênico também são digitadas direto
+// (ex.: absorção de CO2 por fertilização, liberação por queima de resíduo
+// agrícola), não derivadas de um fator.
+export interface DirectGasEmissionData {
+  gas: string; // chave em ghg_gwp (CO2, CH4, N2O, HFC-23, SF6, ...)
+  emitted_t: number; // massa do próprio gás, em toneladas — não CO2e
+  biogenic_co2_emissions_t?: number;
+  biogenic_co2_removals_t?: number;
+}
+
 export type ActivityData =
   | ({ source_category: "stationary_combustion" } & StationaryCombustionData)
   | ({ source_category: "mobile_combustion" } & MobileCombustionData)
   | ({ source_category: "electricity_location" } & ElectricityLocationData)
   | ({ source_category: "electricity_market" } & ElectricityMarketData)
   | ({ source_category: "business_travel" } & BusinessTravelData)
-  | ({ source_category: "commuting" } & CommutingData);
+  | ({ source_category: "commuting" } & CommutingData)
+  | ({ source_category: "industrial_processes" } & DirectGasEmissionData)
+  | ({ source_category: "agriculture" } & DirectGasEmissionData);
 
 // ---- computed (saída do cálculo, gravada junto no banco) ----
 
@@ -95,8 +116,10 @@ export interface Computed {
   // Gases da família HFC/PFC + SF6/NF3, quando a fonte os produzir (fugitivas,
   // processos — fases futuras). gas -> toneladas.
   other_gases_t?: Record<string, number>;
-  // CO2 biogênico é reportado SEPARADO e NÃO entra no total de escopo/CO2e.
+  // CO2 biogênico é reportado SEPARADO e NÃO entra no total de escopo/CO2e —
+  // emissões e remoções (absorção) são duas linhas distintas no Resumo.
   biogenic_co2_t: number;
+  biogenic_co2_removals_t?: number;
   // CO2e fóssil (exclui biogênico), já convertido por GWP.
   co2e_t: number;
   // Proveniência: quais fatores/versão foram usados, p/ detectar staleness.
