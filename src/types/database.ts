@@ -562,6 +562,19 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["ghg_gwp"]["Row"]>;
         Relationships: [];
       };
+      ghg_wtt_fuel_factors: {
+        Row: {
+          id: string;
+          name_pt: string;
+          co2_kg_gj: number;
+          ch4_kg_gj: number;
+          n2o_kg_gj: number;
+          source: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ghg_wtt_fuel_factors"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["ghg_wtt_fuel_factors"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: {
       production_period_summary: {

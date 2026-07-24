@@ -24,8 +24,14 @@ export const SOURCES: SourceMeta[] = [
   { category: "electricity_location", label: "Energia elétrica (localização)", scope: 2, implemented: true },
   { category: "electricity_market", label: "Energia elétrica (escolha de compra)", scope: 2, implemented: true },
   // Escopo 3
+  { category: "purchased_goods", label: "Bens e serviços comprados", scope: 3, implemented: false },
+  { category: "capital_goods", label: "Bens de capital", scope: 3, implemented: false },
+  { category: "fuel_energy_upstream", label: "Atividades relacionadas a combustível e energia", scope: 3, implemented: true },
+  { category: "transport_distribution_upstream", label: "Transporte e distribuição (upstream)", scope: 3, implemented: false },
+  { category: "waste_generated_operations", label: "Resíduos gerados nas operações", scope: 3, implemented: false },
   { category: "business_travel", label: "Viagens a negócios", scope: 3, implemented: true },
   { category: "commuting", label: "Emissões casa-trabalho", scope: 3, implemented: true },
+  { category: "transport_distribution_downstream", label: "Transporte e distribuição (downstream)", scope: 3, implemented: false },
 ];
 
 export const SCOPE_LABELS: Record<Scope, string> = {

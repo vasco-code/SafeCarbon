@@ -44,6 +44,29 @@ function calcDirectGasEmission(data: ActivityData, ctx: FactorContext): CalcResu
   return { ok: true, computed };
 }
 
+// Escopo 3 Cat. 3 — WTT do combustível já queimado direto (mesma quantidade
+// em GJ do Escopo 1), fator próprio cradle-to-gate (kg/GJ = g/MJ, sem
+// conversão). Sem biogênico nesta tabela da planilha.
+function calcFuelEnergyUpstream(data: ActivityData, ctx: FactorContext): CalcResult {
+  if (data.source_category !== "fuel_energy_upstream") return { ok: false, missingFactor: "tipo" };
+  const f = ctx.wttFuels.get(data.fuel_key);
+  if (!f) return { ok: false, missingFactor: `combustível WTT ${data.fuel_key}` };
+  const gj = data.consumption_gj;
+  const co2 = (gj * f.co2_kg_gj) / 1000;
+  const ch4 = (gj * f.ch4_kg_gj) / 1000;
+  const n2o = (gj * f.n2o_kg_gj) / 1000;
+  const computed: Computed = {
+    co2_t: co2,
+    ch4_t: ch4,
+    n2o_t: n2o,
+    biogenic_co2_t: 0,
+    co2e_t: co2eFossil(ctx, co2, ch4, n2o),
+    factor_refs: [`wtt_fuel:${f.name_pt}`],
+    ar_version: ctx.arVersion,
+  };
+  return { ok: true, computed };
+}
+
 type Calculator = (data: ActivityData, ctx: FactorContext) => CalcResult;
 
 const calculators: Record<SourceCategory, Calculator> = {
@@ -174,6 +197,7 @@ const calculators: Record<SourceCategory, Calculator> = {
 
   industrial_processes: calcDirectGasEmission,
   agriculture: calcDirectGasEmission,
+  fuel_energy_upstream: calcFuelEnergyUpstream,
 };
 
 export function calculate(data: ActivityData, ctx: FactorContext): CalcResult {

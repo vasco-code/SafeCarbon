@@ -37,11 +37,24 @@ export interface GenericFactor {
   biogenic_co2_kg: number;
 }
 
+// Escopo 3 Cat. 3 — WTT/cradle-to-gate por combustível (Tabela 22 da aba
+// "Fatores de Emissão"), em kg/GJ — numericamente igual a g/MJ, então usa
+// direto sem conversão. Tabela e propósito distintos de FuelFactor (aquela é
+// combustão em si; esta é a "pegada" de extrair/produzir/transportar o
+// combustível antes de ele ser queimado).
+export interface WttFuelFactor {
+  name_pt: string;
+  co2_kg_gj: number;
+  ch4_kg_gj: number;
+  n2o_kg_gj: number;
+}
+
 export interface FactorContext {
   fuels: Map<number, FuelFactor>;
   grid: Map<string, GridFactor>; // key `${region}:${year}` (mês agregado no anual)
   generic: Map<string, GenericFactor>; // key `${source_category}:${factor_key}`
   gwp: Map<string, number>;
+  wttFuels: Map<string, WttFuelFactor>; // key: name_pt normalizado
   arVersion: string;
 }
 
@@ -55,11 +68,12 @@ export function genericKey(sourceCategory: string, factorKey: string) {
 // Carrega todas as tabelas de fator uma vez e indexa em Map (dado de
 // referência, pequeno e cacheável — ~800 combustíveis são dezenas de KB).
 export async function loadFactorContext(): Promise<FactorContext> {
-  const [fuelsRes, gridRes, genericRes, gwpRes] = await Promise.all([
+  const [fuelsRes, gridRes, genericRes, gwpRes, wttRes] = await Promise.all([
     supabase.from("ghg_fuel_factors").select("*"),
     supabase.from("ghg_grid_factors").select("*"),
     supabase.from("ghg_generic_factors").select("*"),
     supabase.from("ghg_gwp").select("*"),
+    supabase.from("ghg_wtt_fuel_factors").select("*"),
   ]);
 
   const fuels = new Map<number, FuelFactor>();
@@ -129,7 +143,17 @@ export async function loadFactorContext(): Promise<FactorContext> {
     for (const [gas, v] of Object.entries(GWP_AR5)) gwp.set(gas, v);
   }
 
-  return { fuels, grid, generic, gwp, arVersion: AR_VERSION };
+  const wttFuels = new Map<string, WttFuelFactor>();
+  for (const r of (wttRes.data ?? []) as Record<string, number | string>[]) {
+    wttFuels.set(String(r.name_pt), {
+      name_pt: String(r.name_pt),
+      co2_kg_gj: Number(r.co2_kg_gj ?? 0),
+      ch4_kg_gj: Number(r.ch4_kg_gj ?? 0),
+      n2o_kg_gj: Number(r.n2o_kg_gj ?? 0),
+    });
+  }
+
+  return { fuels, grid, generic, gwp, wttFuels, arVersion: AR_VERSION };
 }
 
 export function getGrid(ctx: FactorContext, year: number, region = "SIN"): GridFactor | undefined {

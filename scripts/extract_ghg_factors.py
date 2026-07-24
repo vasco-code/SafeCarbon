@@ -133,6 +133,33 @@ def extract_aviation(ws):
     return out
 
 
+def extract_wtt_fuels(ws):
+    """Tabela 22 (Seção 5, 'berço ao portão'/cradle-to-gate), rows 542+, até
+    a próxima Tabela/Seção. Colunas F/G/H já em gCO2/MJ = kg/GJ (sem
+    conversão). Pula linhas com fator #N/A (calculado a partir de composição
+    em outra aba, fora do escopo desta extração)."""
+    out = []
+    end = None
+    for r in range(540, ws.max_row + 1):
+        v = ws.cell(row=r, column=2).value or ws.cell(row=r, column=3).value
+        if isinstance(v, str) and (v.strip().lower().startswith("tabela 23") or v.strip().lower().startswith("seção 6")):
+            end = r
+            break
+    for r in range(542, end or ws.max_row):
+        name = ws.cell(row=r, column=3).value
+        co2 = ws.cell(row=r, column=6).value
+        ch4 = ws.cell(row=r, column=7).value
+        n2o = ws.cell(row=r, column=8).value
+        if not name or not isinstance(name, str):
+            continue
+        try:
+            float(co2)
+        except (ValueError, TypeError):
+            continue
+        out.append({"name_pt": name.strip(), "co2_kg_gj": co2, "ch4_kg_gj": ch4, "n2o_kg_gj": n2o})
+    return out
+
+
 def extract_commuting(ws):
     """Starter set: ônibus municipal (Tabela 9, ano mais recente 2025, diesel).
     Fatores convertidos por p.km (F/G/H). Expandir com as demais tabelas de
@@ -149,11 +176,33 @@ def extract_commuting(ws):
     return out
 
 
+def print_wtt_seed(fe):
+    """Seed isolado de ghg_wtt_fuel_factors (Escopo 3 Cat. 3) — usado em
+    migrations incrementais que só adicionam essa tabela, sem re-seedar as
+    4 tabelas da Fase 1 (já aplicadas)."""
+    wtt = extract_wtt_fuels(fe)
+    print("-- Seed de ghg_wtt_fuel_factors (WTT/cradle-to-gate, Escopo 3 Cat. 3) — gerado por scripts/extract_ghg_factors.py --wtt")
+    print(f"-- {len(wtt)} combustíveis\n")
+    print("delete from ghg_wtt_fuel_factors;\n")
+    for w in wtt:
+        print(
+            "insert into ghg_wtt_fuel_factors (name_pt, co2_kg_gj, ch4_kg_gj, n2o_kg_gj, source) values ("
+            f"{sqlstr(w['name_pt'])}, {num0(w['co2_kg_gj'])}, {num0(w['ch4_kg_gj'])}, {num0(w['n2o_kg_gj'])}, "
+            "'JEC/Ecoinvent via GHG Protocol FGV v2026.0.1');"
+        )
+
+
 def main():
-    path = sys.argv[1] if len(sys.argv) > 1 else "/Users/vasco/Downloads/ferramenta_ghg_protocol_v2026.0.1.xlsx"
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    flags = [a for a in sys.argv[1:] if a.startswith("--")]
+    path = args[0] if args else "/Users/vasco/Downloads/ferramenta_ghg_protocol_v2026.0.1.xlsx"
     wb = openpyxl.load_workbook(path, data_only=True)
     fe = wb[SHEET_FE]
     var = wb[SHEET_VAR]
+
+    if "--wtt" in flags:
+        print_wtt_seed(fe)
+        return
 
     fuels = extract_fuels(fe)
     grid = extract_grid(var)

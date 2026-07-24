@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Leaf, Factory, Fuel, Zap, Plug, Plane, Bus, Lock, FlaskConical, Wheat } from "lucide-react";
+import { ArrowLeft, Leaf, Factory, Fuel, Zap, Plug, Plane, Bus, Lock, FlaskConical, Wheat, Droplets } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { loadFactorContext, type FactorContext } from "./engine/factors";
 import { aggregate, type InventoryEntry } from "./engine/aggregate";
@@ -15,6 +15,7 @@ import { BusinessTravelSource } from "./sources/BusinessTravelSource";
 import { CommutingSource } from "./sources/CommutingSource";
 import { IndustrialProcessesSource } from "./sources/IndustrialProcessesSource";
 import { AgricultureSource } from "./sources/AgricultureSource";
+import { FuelEnergyUpstreamSource } from "./sources/FuelEnergyUpstreamSource";
 import { ImportPlanilhaPanel } from "./ImportPlanilhaPanel";
 
 interface InventoryHeader {
@@ -33,6 +34,7 @@ const SOURCE_ICONS: Record<string, typeof Factory> = {
   commuting: Bus,
   industrial_processes: FlaskConical,
   agriculture: Wheat,
+  fuel_energy_upstream: Droplets,
 };
 
 function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -173,6 +175,7 @@ export function PegadaInventarioPage() {
         {active === "commuting" && <CommutingSource {...commonProps} entries={entriesOf("commuting")} />}
         {active === "industrial_processes" && <IndustrialProcessesSource {...commonProps} entries={entriesOf("industrial_processes")} />}
         {active === "agriculture" && <AgricultureSource {...commonProps} entries={entriesOf("agriculture")} />}
+        {active === "fuel_energy_upstream" && <FuelEnergyUpstreamSource {...commonProps} entries={entriesOf("fuel_energy_upstream")} />}
       </div>
     </section>
   );

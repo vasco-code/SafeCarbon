@@ -18,7 +18,8 @@ export type SourceCategory =
   | "business_travel"
   | "commuting"
   | "industrial_processes"
-  | "agriculture";
+  | "agriculture"
+  | "fuel_energy_upstream";
 
 export const SCOPE_OF_SOURCE: Record<SourceCategory, Scope> = {
   stationary_combustion: 1,
@@ -29,6 +30,7 @@ export const SCOPE_OF_SOURCE: Record<SourceCategory, Scope> = {
   commuting: 3,
   industrial_processes: 1,
   agriculture: 1,
+  fuel_energy_upstream: 3,
 };
 
 // Setor de atividade — os fatores de CH4/N2O da combustão variam por setor
@@ -97,6 +99,17 @@ export interface DirectGasEmissionData {
   biogenic_co2_removals_t?: number;
 }
 
+// Escopo 3 Categoria 3 (Atividades relacionadas a combustível e energia) —
+// Tabela 1 da aba "Emissões energia (upstream)": WTT (well-to-tank/cradle to
+// gate) do combustível já queimado direto (Escopo 1) — a mesma quantidade em
+// GJ, um fator próprio (ghg_wtt_fuel_factors, não o de combustão). As
+// Tabelas 2-5 dessa aba (WTT da eletricidade/energia térmica comprada, perdas
+// T&D) ficam para uma fase seguinte.
+export interface FuelEnergyUpstreamData {
+  fuel_key: string; // nome em ghg_wtt_fuel_factors
+  consumption_gj: number;
+}
+
 export type ActivityData =
   | ({ source_category: "stationary_combustion" } & StationaryCombustionData)
   | ({ source_category: "mobile_combustion" } & MobileCombustionData)
@@ -105,7 +118,8 @@ export type ActivityData =
   | ({ source_category: "business_travel" } & BusinessTravelData)
   | ({ source_category: "commuting" } & CommutingData)
   | ({ source_category: "industrial_processes" } & DirectGasEmissionData)
-  | ({ source_category: "agriculture" } & DirectGasEmissionData);
+  | ({ source_category: "agriculture" } & DirectGasEmissionData)
+  | ({ source_category: "fuel_energy_upstream" } & FuelEnergyUpstreamData);
 
 // ---- computed (saída do cálculo, gravada junto no banco) ----
 

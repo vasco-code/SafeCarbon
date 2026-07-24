@@ -129,6 +129,18 @@ function resolveGasKey(ctx: FactorContext, label: string): string | null {
   return null;
 }
 
+function resolveWttFuelKey(ctx: FactorContext, fuelName: string): string | null {
+  const target = normalize(fuelName);
+  if (!target || target === "-") return null;
+  for (const key of ctx.wttFuels.keys()) {
+    if (normalize(key) === target) return key;
+  }
+  for (const key of ctx.wttFuels.keys()) {
+    if (normalize(key).includes(target) || target.includes(normalize(key))) return key;
+  }
+  return null;
+}
+
 function resolveGenericKey(ctx: FactorContext, category: string, label: string): string | null {
   const target = normalize(label);
   if (!target) return null;
@@ -340,6 +352,33 @@ export function parseGhgWorkbook(
           biogenic_co2_emissions_t: num(r[8]) || undefined,
           biogenic_co2_removals_t: num(r[9]) || undefined,
         },
+      });
+    }
+  }
+
+  // ---- Escopo 3 Cat. 3 (WTT combustível): header r43, exemplo/dados vazios
+  // no template oficial — Tabela 1 só, colunas B(fuel)/E(GJ). ----
+  const fuelUpstream = findSheet(wb, ["emissoes energia (upstream)", "emissões energia (upstream)"]);
+  if (fuelUpstream) {
+    sheetsFound.push(fuelUpstream);
+    const g = grid(wb, fuelUpstream);
+    const h = findHeaderRow(g, "combustivel utilizado");
+    const end = sectionEnd(g, h + 1);
+    for (let i = h + 1; h >= 0 && i < end; i++) {
+      const r = g[i] ?? [];
+      if (isExample(r)) continue;
+      const fuelName = str(r[1]);
+      const gj = num(r[4]);
+      if (!fuelName || !gj) continue;
+      const fuelKey = resolveWttFuelKey(ctx, fuelName);
+      if (!fuelKey) {
+        skipped.push({ sheet: fuelUpstream, reason: "Combustível WTT não reconhecido", detail: fuelName });
+        continue;
+      }
+      rows.push({
+        sourceRef: "",
+        description: fuelName,
+        data: { source_category: "fuel_energy_upstream", fuel_key: fuelKey, consumption_gj: gj },
       });
     }
   }
