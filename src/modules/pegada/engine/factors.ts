@@ -63,6 +63,19 @@ export interface EffluentFactor {
   ef_n2o_n_kg_n: number;
 }
 
+// Escopo 1 — Resíduos sólidos / incineração. Parâmetros de composição por
+// categoria de resíduo (umidade, teor de carbono na massa seca, fração de
+// carbono fóssil). O motor itera a lista inteira; "Outros" (última posição)
+// recebe a fração restante da composição. `category` inclui o prefixo "A - ",
+// "B - " etc.; `position` preserva a ordem da planilha.
+export interface IncinerationFactor {
+  position: number;
+  category: string;
+  moisture: number;
+  carbon_content: number;
+  fossil_fraction: number;
+}
+
 export interface FactorContext {
   fuels: Map<number, FuelFactor>;
   grid: Map<string, GridFactor>; // key `${region}:${year}` (mês agregado no anual)
@@ -70,6 +83,7 @@ export interface FactorContext {
   gwp: Map<string, number>;
   wttFuels: Map<string, WttFuelFactor>; // key: name_pt normalizado
   effluents: Map<string, EffluentFactor>; // key: `${domain}:${treatment_type}`
+  incineration: IncinerationFactor[]; // ordenado por position
   arVersion: string;
 }
 
@@ -86,13 +100,14 @@ export function effluentKey(domain: string, treatmentType: string) {
 // Carrega todas as tabelas de fator uma vez e indexa em Map (dado de
 // referência, pequeno e cacheável — ~800 combustíveis são dezenas de KB).
 export async function loadFactorContext(): Promise<FactorContext> {
-  const [fuelsRes, gridRes, genericRes, gwpRes, wttRes, effluentRes] = await Promise.all([
+  const [fuelsRes, gridRes, genericRes, gwpRes, wttRes, effluentRes, incinRes] = await Promise.all([
     supabase.from("ghg_fuel_factors").select("*"),
     supabase.from("ghg_grid_factors").select("*"),
     supabase.from("ghg_generic_factors").select("*"),
     supabase.from("ghg_gwp").select("*"),
     supabase.from("ghg_wtt_fuel_factors").select("*"),
     supabase.from("ghg_effluent_factors").select("*"),
+    supabase.from("ghg_incineration_factors").select("*"),
   ]);
 
   const fuels = new Map<number, FuelFactor>();
@@ -186,7 +201,19 @@ export async function loadFactorContext(): Promise<FactorContext> {
     });
   }
 
-  return { fuels, grid, generic, gwp, wttFuels, effluents, arVersion: AR_VERSION };
+  const incineration: IncinerationFactor[] = [];
+  for (const r of (incinRes.data ?? []) as Record<string, number | string>[]) {
+    incineration.push({
+      position: Number(r.position),
+      category: String(r.category),
+      moisture: Number(r.moisture ?? 0),
+      carbon_content: Number(r.carbon_content ?? 0),
+      fossil_fraction: Number(r.fossil_fraction ?? 0),
+    });
+  }
+  incineration.sort((a, b) => a.position - b.position);
+
+  return { fuels, grid, generic, gwp, wttFuels, effluents, incineration, arVersion: AR_VERSION };
 }
 
 export function getGrid(ctx: FactorContext, year: number, region = "SIN"): GridFactor | undefined {

@@ -227,6 +227,39 @@ def print_effluent_seed(listas):
         )
 
 
+def extract_incineration_factors(rs):
+    """Parâmetros de composição do resíduo incinerado (Escopo 1) — aba
+    "Resíduos sólidos", linhas 182-193: C=categoria, F=umidade, G=teor de
+    carbono (massa seca), H=fração de carbono fóssil."""
+    rows = []
+    for r in range(182, 194):
+        name = rs.cell(row=r, column=3).value  # C
+        if not name:
+            continue
+        rows.append({
+            "position": r - 181,
+            "category": str(name).strip(),
+            "moisture": rs.cell(row=r, column=6).value,   # F
+            "carbon_content": rs.cell(row=r, column=7).value,  # G
+            "fossil_fraction": rs.cell(row=r, column=8).value,  # H
+        })
+    return rows
+
+
+def print_incineration_seed(rs):
+    """Seed isolado de ghg_incineration_factors (Escopo 1, incineração)."""
+    inc = extract_incineration_factors(rs)
+    print("-- Seed de ghg_incineration_factors (composição do resíduo incinerado, Escopo 1) — gerado por scripts/extract_ghg_factors.py --incineration")
+    print(f"-- {len(inc)} categorias\n")
+    print("delete from ghg_incineration_factors;\n")
+    for e in inc:
+        print(
+            "insert into ghg_incineration_factors (position, category, moisture, carbon_content, fossil_fraction, source) values ("
+            f"{e['position']}, {sqlstr(e['category'])}, {num0(e['moisture'])}, {num0(e['carbon_content'])}, "
+            f"{num0(e['fossil_fraction'])}, 'IPCC 2006 via GHG Protocol FGV v2026.0.1');"
+        )
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     flags = [a for a in sys.argv[1:] if a.startswith("--")]
@@ -241,6 +274,10 @@ def main():
 
     if "--effluent" in flags:
         print_effluent_seed(wb["Listas"])
+        return
+
+    if "--incineration" in flags:
+        print_incineration_seed(wb["Resíduos sólidos"])
         return
 
     fuels = extract_fuels(fe)

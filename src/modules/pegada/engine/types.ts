@@ -21,6 +21,7 @@ export type SourceCategory =
   | "industrial_processes"
   | "agriculture"
   | "effluents"
+  | "solid_waste"
   | "fuel_energy_upstream";
 
 export const SCOPE_OF_SOURCE: Record<SourceCategory, Scope> = {
@@ -34,6 +35,7 @@ export const SCOPE_OF_SOURCE: Record<SourceCategory, Scope> = {
   industrial_processes: 1,
   agriculture: 1,
   effluents: 1,
+  solid_waste: 1,
   fuel_energy_upstream: 3,
 };
 
@@ -171,6 +173,41 @@ export interface EffluentData {
   biogenic_co2_t?: number;
 }
 
+// Escopo 1 — Resíduos sólidos (aba "Resíduos sólidos"). Fase A: três métodos
+// single-year. O aterro (modelo FOD/First Order Decay, série de 30 anos) fica
+// para a Fase B.
+//  - "composting": CH4 (t) = massa × EF_CH4[g/kg] × 1e-3 − CH4_recuperado;
+//      N2O (t) = massa × EF_N2O[g/kg] × 1e-3. Defaults IPCC: 4 gCH4/kg e
+//      0,24 gN2O/kg. CO2e zera se CH4 líquido < 0. CO2 biogênico se biogás
+//      recuperado é queimado em flare (CH4_recuperado × 44/16).
+//  - "incineration": por categoria de composição — CO2 (t) = 44/12 × frac ×
+//      massa × (1 − umidade) × teor_C × fração_fóssil (o restante da fração,
+//      1 − fóssil, é CO2 biogênico); "Outros" recebe a fração restante.
+//      CH4/N2O do processo por FE (g/t): defaults 0 e 100. CO2 fóssil entra no
+//      escopo; biogênico à parte.
+//  - "direct": relato de CO2/CH4/N2O (Tabela 4 da aba).
+export type SolidWasteMethod = "composting" | "incineration" | "direct";
+
+export interface SolidWasteData {
+  method: SolidWasteMethod;
+  // composting
+  mass_t?: number;
+  ef_ch4_g_kg?: number; // override; default 4
+  ef_n2o_g_kg?: number; // override; default 0.24
+  ch4_recovered_t?: number;
+  biogas_flared?: boolean;
+  // incineration
+  incinerated_t?: number;
+  composition?: Record<string, number>; // categoria ("A - ...") → % (0-100)
+  ef_ch4_g_t?: number; // FE de processo; default 0
+  ef_n2o_g_t?: number; // FE de processo; default 100
+  // direct
+  co2_t?: number;
+  ch4_t?: number;
+  n2o_t?: number;
+  biogenic_co2_t?: number;
+}
+
 // Escopo 3 Categoria 3 (Atividades relacionadas a combustível e energia) —
 // Tabela 1 da aba "Emissões energia (upstream)": WTT (well-to-tank/cradle to
 // gate) do combustível já queimado direto (Escopo 1) — a mesma quantidade em
@@ -193,6 +230,7 @@ export type ActivityData =
   | ({ source_category: "industrial_processes" } & DirectGasEmissionData)
   | ({ source_category: "agriculture" } & DirectGasEmissionData)
   | ({ source_category: "effluents" } & EffluentData)
+  | ({ source_category: "solid_waste" } & SolidWasteData)
   | ({ source_category: "fuel_energy_upstream" } & FuelEnergyUpstreamData);
 
 // ---- computed (saída do cálculo, gravada junto no banco) ----

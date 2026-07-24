@@ -590,6 +590,20 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["ghg_effluent_factors"]["Row"]>;
         Relationships: [];
       };
+      ghg_incineration_factors: {
+        Row: {
+          id: string;
+          position: number;
+          category: string;
+          moisture: number;
+          carbon_content: number;
+          fossil_fraction: number;
+          source: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ghg_incineration_factors"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["ghg_incineration_factors"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: {
       production_period_summary: {

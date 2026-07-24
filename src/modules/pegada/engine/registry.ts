@@ -178,6 +178,95 @@ function calcEffluent(data: ActivityData, ctx: FactorContext): CalcResult {
   return { ok: true, computed };
 }
 
+// Resíduos sólidos (Escopo 1), Fase A. Ver SolidWasteData em types.ts.
+// Defaults IPCC quando o usuário não informa fator próprio.
+const COMPOST_EF_CH4_G_KG = 4; // gCH4/kg de resíduo
+const COMPOST_EF_N2O_G_KG = 0.24; // gN2O/kg de resíduo
+const INCIN_EF_CH4_G_T = 0; // gCH4/t (base úmida)
+const INCIN_EF_N2O_G_T = 100; // gN2O/t (base úmida)
+
+function calcSolidWaste(data: ActivityData, ctx: FactorContext): CalcResult {
+  if (data.source_category !== "solid_waste") return { ok: false, missingFactor: "tipo" };
+
+  if (data.method === "direct") {
+    const co2 = data.co2_t ?? 0;
+    const ch4 = data.ch4_t ?? 0;
+    const n2o = data.n2o_t ?? 0;
+    return {
+      ok: true,
+      computed: {
+        co2_t: co2,
+        ch4_t: ch4,
+        n2o_t: n2o,
+        biogenic_co2_t: data.biogenic_co2_t ?? 0,
+        co2e_t: co2eFossil(ctx, co2, ch4, n2o),
+        factor_refs: ["user_supplied"],
+        ar_version: ctx.arVersion,
+      },
+    };
+  }
+
+  if (data.method === "composting") {
+    const mass = data.mass_t ?? 0;
+    const recovered = data.ch4_recovered_t ?? 0;
+    const efCh4 = data.ef_ch4_g_kg ?? COMPOST_EF_CH4_G_KG;
+    const efN2o = data.ef_n2o_g_kg ?? COMPOST_EF_N2O_G_KG;
+    const ch4 = mass * efCh4 * 1e-3 - recovered;
+    const n2o = mass * efN2o * 1e-3;
+    const co2e = ch4 < 0 ? 0 : ch4 * gwpOf(ctx, "CH4") + n2o * gwpOf(ctx, "N2O");
+    const biogenic = data.biogas_flared ? recovered * (44 / 16) : 0;
+    return {
+      ok: true,
+      computed: {
+        co2_t: 0,
+        ch4_t: ch4,
+        n2o_t: n2o,
+        biogenic_co2_t: biogenic,
+        co2e_t: co2e,
+        factor_refs: ["composting"],
+        ar_version: ctx.arVersion,
+      },
+    };
+  }
+
+  // incineration
+  if (ctx.incineration.length === 0) return { ok: false, missingFactor: "fatores de incineração" };
+  const qty = data.incinerated_t ?? 0;
+  const comp = data.composition ?? {};
+  // Frações das categorias A-K informadas; "Outros" (última posição) recebe o
+  // restante para fechar 100%, como na planilha.
+  const named = ctx.incineration.filter((f) => f.position < ctx.incineration.length);
+  const namedSum = named.reduce((s, f) => s + (comp[f.category] ?? 0) / 100, 0);
+  const outros = ctx.incineration[ctx.incineration.length - 1];
+  const outrosFrac = Math.max(0, 1 - namedSum);
+
+  let co2Fossil = 0;
+  let co2Biogenic = 0;
+  for (const f of ctx.incineration) {
+    const frac = f === outros ? outrosFrac : (comp[f.category] ?? 0) / 100;
+    if (frac <= 0) continue;
+    const base = (44 / 12) * frac * qty * (1 - f.moisture) * f.carbon_content;
+    co2Fossil += base * f.fossil_fraction;
+    co2Biogenic += base * (1 - f.fossil_fraction);
+  }
+  const efCh4 = data.ef_ch4_g_t ?? INCIN_EF_CH4_G_T;
+  const efN2o = data.ef_n2o_g_t ?? INCIN_EF_N2O_G_T;
+  const ch4 = (qty * efCh4) / 1e6; // g/t → t
+  const n2o = (qty * efN2o) / 1e6;
+  return {
+    ok: true,
+    computed: {
+      co2_t: co2Fossil,
+      ch4_t: ch4,
+      n2o_t: n2o,
+      biogenic_co2_t: co2Biogenic,
+      co2e_t: co2eFossil(ctx, co2Fossil, ch4, n2o),
+      factor_refs: ["incineration"],
+      ar_version: ctx.arVersion,
+    },
+  };
+}
+
 type Calculator = (data: ActivityData, ctx: FactorContext) => CalcResult;
 
 const calculators: Record<SourceCategory, Calculator> = {
@@ -310,6 +399,7 @@ const calculators: Record<SourceCategory, Calculator> = {
   industrial_processes: calcDirectGasEmission,
   agriculture: calcDirectGasEmission,
   effluents: calcEffluent,
+  solid_waste: calcSolidWaste,
   fuel_energy_upstream: calcFuelEnergyUpstream,
 };
 

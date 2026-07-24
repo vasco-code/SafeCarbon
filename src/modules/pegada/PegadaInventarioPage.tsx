@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Leaf, Factory, Fuel, Zap, Plug, Plane, Bus, Lock, FlaskConical, Wheat, Droplets, Wind, Waves } from "lucide-react";
+import { ArrowLeft, Leaf, Factory, Fuel, Zap, Plug, Plane, Bus, Lock, FlaskConical, Wheat, Droplets, Wind, Waves, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { loadFactorContext, type FactorContext } from "./engine/factors";
 import { aggregate, type InventoryEntry } from "./engine/aggregate";
@@ -17,6 +17,7 @@ import { IndustrialProcessesSource } from "./sources/IndustrialProcessesSource";
 import { AgricultureSource } from "./sources/AgricultureSource";
 import { FugitiveSource } from "./sources/FugitiveSource";
 import { EffluentSource } from "./sources/EffluentSource";
+import { SolidWasteSource } from "./sources/SolidWasteSource";
 import { FuelEnergyUpstreamSource } from "./sources/FuelEnergyUpstreamSource";
 import { ImportPlanilhaPanel } from "./ImportPlanilhaPanel";
 
@@ -38,6 +39,7 @@ const SOURCE_ICONS: Record<string, typeof Factory> = {
   industrial_processes: FlaskConical,
   agriculture: Wheat,
   effluents: Waves,
+  solid_waste: Trash2,
   fuel_energy_upstream: Droplets,
 };
 
@@ -181,6 +183,7 @@ export function PegadaInventarioPage() {
         {active === "industrial_processes" && <IndustrialProcessesSource {...commonProps} entries={entriesOf("industrial_processes")} />}
         {active === "agriculture" && <AgricultureSource {...commonProps} entries={entriesOf("agriculture")} />}
         {active === "effluents" && <EffluentSource {...commonProps} entries={entriesOf("effluents")} />}
+        {active === "solid_waste" && <SolidWasteSource {...commonProps} entries={entriesOf("solid_waste")} />}
         {active === "fuel_energy_upstream" && <FuelEnergyUpstreamSource {...commonProps} entries={entriesOf("fuel_energy_upstream")} />}
       </div>
     </section>
