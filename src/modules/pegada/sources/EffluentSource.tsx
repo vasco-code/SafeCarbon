@@ -4,12 +4,12 @@ import type { EffluentMethod } from "../engine/types";
 import { addEntry } from "../entryActions";
 import { EntryTable, fmt, type SourceProps } from "./common";
 
-// Efluentes (Escopo 1). Dois métodos: cálculo detalhado (tratamento único,
-// metodologia IPCC) e relato direto de CO2/CH4/N2O. Ver calcEffluent no
-// registry. Tratamento sequencial e disposição final separada ficam p/ depois.
+// Efluentes (Escopo 1). Dois métodos: cálculo detalhado (metodologia IPCC, com
+// até três etapas — tratamento, tratamento sequencial e disposição final) e
+// relato direto de CO2/CH4/N2O. Ver calcEffluent no registry.
 
 const METHOD_LABELS: Record<EffluentMethod, string> = {
-  detailed: "Cálculo detalhado (tratamento único)",
+  detailed: "Cálculo detalhado (IPCC)",
   direct: "Relato direto de CO₂/CH₄/N₂O",
 };
 
@@ -17,6 +17,115 @@ const DOMAIN_LABELS: Record<"domestic" | "industrial", string> = {
   domestic: "Doméstico (esgoto sanitário)",
   industrial: "Industrial",
 };
+
+// Campos de uma etapa adicional do caminho do efluente (tratamento sequencial
+// ou disposição final). Mesma forma da etapa 1; a disposição final não tem
+// carga removida nem recuperação de CH₄ (a planilha não os considera lá).
+type StageForm = {
+  treatment_type: string;
+  volume_m3: string;
+  organic_unit: "dbo" | "dqo";
+  organic_load_kg_m3: string;
+  organic_removed_kg_m3: string;
+  nitrogen_kg_m3: string;
+  ch4_recovered_t: string;
+  biogas_flared: boolean;
+};
+
+const EMPTY_STAGE: StageForm = {
+  treatment_type: "",
+  volume_m3: "",
+  organic_unit: "dbo",
+  organic_load_kg_m3: "",
+  organic_removed_kg_m3: "",
+  nitrogen_kg_m3: "",
+  ch4_recovered_t: "",
+  biogas_flared: false,
+};
+
+function StageFields({
+  idPrefix,
+  legend,
+  treatments,
+  stage,
+  setStage,
+  allowRemoval,
+}: {
+  idPrefix: string;
+  legend: string;
+  treatments: string[];
+  stage: StageForm;
+  setStage: (updater: (s: StageForm) => StageForm) => void;
+  allowRemoval: boolean;
+}) {
+  const set = (k: keyof StageForm) => (v: string | boolean) => setStage((s) => ({ ...s, [k]: v }));
+  return (
+    <div style={{ borderLeft: "3px solid var(--sc-border)", paddingLeft: "0.9rem", marginTop: "0.5rem" }}>
+      <p style={{ fontSize: "0.8rem", color: "var(--sc-muted)", margin: "0 0 0.5rem" }}>{legend}</p>
+
+      <label htmlFor={`${idPrefix}-treatment`}>Tipo de tratamento</label>
+      <select id={`${idPrefix}-treatment`} value={stage.treatment_type} onChange={(e) => set("treatment_type")(e.target.value)}>
+        <option value="">Selecione...</option>
+        {treatments.map((t) => (
+          <option key={t} value={t}>{t}</option>
+        ))}
+      </select>
+
+      <label htmlFor={`${idPrefix}-volume`}>Vazão nesta etapa (m³/ano)</label>
+      <input id={`${idPrefix}-volume`} type="number" step="0.01" min="0" value={stage.volume_m3} onChange={(e) => set("volume_m3")(e.target.value)} />
+
+      <label htmlFor={`${idPrefix}-unit`}>Unidade da carga orgânica</label>
+      <select id={`${idPrefix}-unit`} value={stage.organic_unit} onChange={(e) => set("organic_unit")(e.target.value)}>
+        <option value="dbo">DBO — kgDBO/m³</option>
+        <option value="dqo">DQO — kgDQO/m³</option>
+      </select>
+
+      <label htmlFor={`${idPrefix}-load`}>
+        Carga orgânica degradável (kg{stage.organic_unit === "dqo" ? "DQO" : "DBO"}/m³)
+      </label>
+      <input id={`${idPrefix}-load`} type="number" step="0.0001" min="0" value={stage.organic_load_kg_m3} onChange={(e) => set("organic_load_kg_m3")(e.target.value)} />
+
+      {allowRemoval && (
+        <>
+          <label htmlFor={`${idPrefix}-removed`}>Carga orgânica removida com o lodo (kg/m³, opcional)</label>
+          <input id={`${idPrefix}-removed`} type="number" step="0.0001" min="0" value={stage.organic_removed_kg_m3} onChange={(e) => set("organic_removed_kg_m3")(e.target.value)} />
+        </>
+      )}
+
+      <label htmlFor={`${idPrefix}-n`}>Nitrogênio no efluente (kgN/m³, opcional — para N₂O)</label>
+      <input id={`${idPrefix}-n`} type="number" step="0.0001" min="0" value={stage.nitrogen_kg_m3} onChange={(e) => set("nitrogen_kg_m3")(e.target.value)} />
+
+      {allowRemoval && (
+        <>
+          <label htmlFor={`${idPrefix}-rec`}>CH₄ recuperado (tCH₄/ano, opcional)</label>
+          <input id={`${idPrefix}-rec`} type="number" step="0.0001" min="0" value={stage.ch4_recovered_t} onChange={(e) => set("ch4_recovered_t")(e.target.value)} />
+
+          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.75rem" }}>
+            <input type="checkbox" checked={stage.biogas_flared} onChange={(e) => set("biogas_flared")(e.target.checked)} style={{ width: "auto" }} />
+            Biogás recuperado é queimado em flare (gera CO₂ biogênico)
+          </label>
+        </>
+      )}
+    </div>
+  );
+}
+
+function stageToData(s: StageForm, allowRemoval: boolean) {
+  return {
+    treatment_type: s.treatment_type,
+    volume_m3: s.volume_m3 ? Number(s.volume_m3) : undefined,
+    organic_unit: s.organic_unit,
+    organic_load_kg_m3: s.organic_load_kg_m3 ? Number(s.organic_load_kg_m3) : undefined,
+    nitrogen_kg_m3: s.nitrogen_kg_m3 ? Number(s.nitrogen_kg_m3) : undefined,
+    ...(allowRemoval
+      ? {
+          organic_removed_kg_m3: s.organic_removed_kg_m3 ? Number(s.organic_removed_kg_m3) : undefined,
+          ch4_recovered_t: s.ch4_recovered_t ? Number(s.ch4_recovered_t) : undefined,
+          biogas_flared: s.biogas_flared,
+        }
+      : {}),
+  };
+}
 
 export function EffluentSource({ inventoryId, ctx, entries, reload, readOnly }: SourceProps) {
   // Tipos de tratamento por domínio, derivados da tabela de fator.
@@ -36,6 +145,11 @@ export function EffluentSource({ inventoryId, ctx, entries, reload, readOnly }: 
   const [nitrogen, setNitrogen] = useState("");
   const [ch4Recovered, setCh4Recovered] = useState("");
   const [biogasFlared, setBiogasFlared] = useState(false);
+  // etapas adicionais
+  const [hasSequential, setHasSequential] = useState(false);
+  const [seq, setSeq] = useState<StageForm>(EMPTY_STAGE);
+  const [hasDisposal, setHasDisposal] = useState(false);
+  const [disp, setDisp] = useState<StageForm>(EMPTY_STAGE);
   // direto
   const [co2, setCo2] = useState("");
   const [ch4, setCh4] = useState("");
@@ -72,6 +186,8 @@ export function EffluentSource({ inventoryId, ctx, entries, reload, readOnly }: 
       nitrogen_kg_m3: nitrogen ? Number(nitrogen) : undefined,
       ch4_recovered_t: ch4Recovered ? Number(ch4Recovered) : undefined,
       biogas_flared: biogasFlared,
+      ...(hasSequential && seq.treatment_type ? { sequential: stageToData(seq, true) } : {}),
+      ...(hasDisposal && disp.treatment_type ? { disposal: stageToData(disp, false) } : {}),
     } as const;
   }
 
@@ -108,6 +224,10 @@ export function EffluentSource({ inventoryId, ctx, entries, reload, readOnly }: 
       setNitrogen("");
       setCh4Recovered("");
       setBiogasFlared(false);
+      setHasSequential(false);
+      setSeq(EMPTY_STAGE);
+      setHasDisposal(false);
+      setDisp(EMPTY_STAGE);
       setCo2("");
       setCh4("");
       setN2o("");
@@ -198,6 +318,36 @@ export function EffluentSource({ inventoryId, ctx, entries, reload, readOnly }: 
                 <input type="checkbox" checked={biogasFlared} onChange={(e) => setBiogasFlared(e.target.checked)} style={{ width: "auto" }} />
                 Biogás recuperado é queimado em flare (gera CO₂ biogênico)
               </label>
+
+              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "1.25rem" }}>
+                <input type="checkbox" checked={hasSequential} onChange={(e) => setHasSequential(e.target.checked)} style={{ width: "auto" }} />
+                O efluente passa por um segundo tratamento (sequencial)
+              </label>
+              {hasSequential && (
+                <StageFields
+                  idPrefix="ef-seq"
+                  legend="Tratamento sequencial — dados do efluente que sai do primeiro tratamento"
+                  treatments={treatmentOptions}
+                  stage={seq}
+                  setStage={setSeq}
+                  allowRemoval
+                />
+              )}
+
+              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "1.25rem" }}>
+                <input type="checkbox" checked={hasDisposal} onChange={(e) => setHasDisposal(e.target.checked)} style={{ width: "auto" }} />
+                O efluente é lançado ao ambiente (disposição final)
+              </label>
+              {hasDisposal && (
+                <StageFields
+                  idPrefix="ef-dis"
+                  legend="Disposição final — efluente lançado ao ambiente. A planilha não considera carga removida nem recuperação de CH₄ nesta etapa."
+                  treatments={treatmentOptions}
+                  stage={disp}
+                  setStage={setDisp}
+                  allowRemoval={false}
+                />
+              )}
             </>
           ) : (
             <>

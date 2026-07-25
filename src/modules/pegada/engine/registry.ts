@@ -1,4 +1,6 @@
-import type { ActivityData, CalcResult, Computed, Scope3GasEntryCategory, SourceCategory } from "./types";
+import type {
+  ActivityData, CalcResult, Computed, EffluentStage, Scope3GasEntryCategory, SourceCategory,
+} from "./types";
 import { SCOPE3_GAS_ENTRY_CATEGORIES } from "./types";
 import { effluentKey, genericKey, getFleet, getGrid, mcfOf, type FactorContext } from "./factors";
 
@@ -177,26 +179,55 @@ function calcEffluent(data: ActivityData, ctx: FactorContext): CalcResult {
     return { ok: true, computed };
   }
 
-  // detailed — tratamento único
+  // detailed — soma de até três etapas, como na fórmula E154/E155 da planilha:
+  // tratamento (Passos 3-6), tratamento sequencial (7-10) e disposição final
+  // ao ambiente (11-12). Cada etapa contribui com CH4 e N2O próprios.
   if (!data.domain || !data.treatment_type) return { ok: false, missingFactor: "tipo de tratamento" };
-  const f = ctx.effluents.get(effluentKey(data.domain, data.treatment_type));
-  if (!f) return { ok: false, missingFactor: `tratamento de efluente ${data.domain}/${data.treatment_type}` };
+  const domain = data.domain;
 
-  const q = data.volume_m3 ?? 0;
-  const load = data.organic_load_kg_m3 ?? 0;
-  const removed = data.organic_removed_kg_m3 ?? 0;
-  const efCh4 = data.organic_unit === "dqo" ? f.ef_ch4_kg_dqo : f.ef_ch4_kg_dbo;
-  const recovered = data.ch4_recovered_t ?? 0;
-  const ch4 = (q * (load - removed) * efCh4) / 1000 - recovered;
+  // `allowRemoval` distingue tratamento (subtrai carga removida e CH4
+  // recuperado) de disposição final (a planilha não considera nenhum dos dois).
+  function stage(
+    s: EffluentStage,
+    allowRemoval: boolean,
+  ): { ch4: number; n2o: number; biogenic: number; ref: string } | { missing: string } {
+    if (!s.treatment_type) return { missing: "tipo de tratamento" };
+    const f = ctx.effluents.get(effluentKey(domain, s.treatment_type));
+    if (!f) return { missing: `tratamento de efluente ${domain}/${s.treatment_type}` };
+    const q = s.volume_m3 ?? 0;
+    const load = s.organic_load_kg_m3 ?? 0;
+    const removed = allowRemoval ? (s.organic_removed_kg_m3 ?? 0) : 0;
+    const efCh4 = s.organic_unit === "dqo" ? f.ef_ch4_kg_dqo : f.ef_ch4_kg_dbo;
+    const recovered = allowRemoval ? (s.ch4_recovered_t ?? 0) : 0;
+    const efN2o = (44 / 28) * f.ef_n2o_n_kg_n; // kgN2O-N/kgN → kgN2O/kgN
+    return {
+      ch4: (q * (load - removed) * efCh4) / 1000 - recovered,
+      n2o: (q * (s.nitrogen_kg_m3 ?? 0) * efN2o) / 1000,
+      biogenic: allowRemoval && s.biogas_flared ? recovered * (44 / 16) : 0,
+      ref: `effluent:${domain}:${s.treatment_type}:${s.organic_unit ?? "dbo"}`,
+    };
+  }
 
-  const n = data.nitrogen_kg_m3 ?? 0;
-  const efN2o = (44 / 28) * f.ef_n2o_n_kg_n; // kgN2O-N/kgN → kgN2O/kgN
-  const n2o = (q * n * efN2o) / 1000;
+  const stages: [EffluentStage, boolean][] = [[data, true]];
+  if (data.sequential?.treatment_type) stages.push([data.sequential, true]);
+  if (data.disposal?.treatment_type) stages.push([data.disposal, false]);
+
+  let ch4 = 0;
+  let n2o = 0;
+  let biogenic = 0;
+  const refs: string[] = [];
+  for (const [s, allowRemoval] of stages) {
+    const r = stage(s, allowRemoval);
+    if ("missing" in r) return { ok: false, missingFactor: r.missing };
+    ch4 += r.ch4;
+    n2o += r.n2o;
+    biogenic += r.biogenic;
+    refs.push(r.ref);
+  }
 
   // A planilha zera o CO2e do lançamento inteiro quando o CH4 líquido é
   // negativo (recuperação maior que a geração) — não apenas a parcela de CH4.
   const co2e = ch4 < 0 ? 0 : ch4 * gwpOf(ctx, "CH4") + n2o * gwpOf(ctx, "N2O");
-  const biogenic = data.biogas_flared ? recovered * (44 / 16) : 0;
 
   const computed: Computed = {
     co2_t: 0,
@@ -204,7 +235,7 @@ function calcEffluent(data: ActivityData, ctx: FactorContext): CalcResult {
     n2o_t: n2o,
     biogenic_co2_t: biogenic,
     co2e_t: co2e,
-    factor_refs: [`effluent:${data.domain}:${data.treatment_type}`, `unit:${data.organic_unit ?? "dbo"}`],
+    factor_refs: refs,
     ar_version: ctx.arVersion,
   };
   return { ok: true, computed };

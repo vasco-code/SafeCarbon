@@ -205,6 +205,21 @@ export interface FugitiveEmissionData {
 // separada (Passos 11-12); estimativa doméstica per capita (kgDBO/pessoa.dia).
 export type EffluentMethod = "detailed" | "direct";
 
+// Uma etapa do caminho do efluente (tratamento sequencial ou disposição
+// final). O `domain` (doméstico/industrial) é o mesmo do efluente e fica só na
+// etapa 1. Em disposição final, `organic_removed_kg_m3`, `ch4_recovered_t` e
+// `biogas_flared` não se aplicam — a planilha não os considera nesse termo.
+export interface EffluentStage {
+  treatment_type?: string; // chave em ghg_effluent_factors
+  volume_m3?: number;
+  organic_unit?: "dbo" | "dqo";
+  organic_load_kg_m3?: number;
+  organic_removed_kg_m3?: number;
+  nitrogen_kg_m3?: number;
+  ch4_recovered_t?: number;
+  biogas_flared?: boolean;
+}
+
 export interface EffluentData {
   method: EffluentMethod;
   // detailed
@@ -217,6 +232,12 @@ export interface EffluentData {
   nitrogen_kg_m3?: number; // N no efluente (opcional → N2O)
   ch4_recovered_t?: number; // CH4 recuperado (opcional)
   biogas_flared?: boolean; // biogás recuperado queimado em flare → CO2 biogênico
+  // Etapa 2 — tratamento sequencial (Passos 7-10): um segundo tratamento
+  // aplicado ao efluente que sai do primeiro. Mesma matemática da etapa 1.
+  sequential?: EffluentStage;
+  // Etapa 3 — disposição final (Passos 11-12): o efluente lançado ao ambiente.
+  // A planilha NÃO subtrai carga removida nem recuperação de CH4 aqui.
+  disposal?: EffluentStage;
   // direct
   co2_t?: number;
   ch4_t?: number;
