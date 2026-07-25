@@ -409,6 +409,7 @@ const calculators: Record<SourceCategory, Calculator> = {
   agriculture: calcDirectGasEmission,
   effluents: calcEffluent,
   solid_waste: calcSolidWaste,
+  land_use: calcDirectGasEmission,
   fuel_energy_upstream: calcFuelEnergyUpstream,
   // Escopo 3 — as 12 categorias sem cálculo próprio usam o modelo de entrada
   // direta por gás da aba "Categorias de Escopo 3".

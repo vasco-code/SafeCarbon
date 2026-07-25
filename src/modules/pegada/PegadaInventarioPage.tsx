@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft, Leaf, Factory, Fuel, Zap, Plug, Plane, Bus, Lock, FlaskConical, Wheat, Droplets,
   Wind, Waves, Trash2, Package, Building2, Truck, Recycle, Warehouse, Cog, ShoppingCart, Store,
-  TrendingUp, PackageOpen, FileDown,
+  TrendingUp, PackageOpen, FileDown, TreePine,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { loadFactorContext, type FactorContext } from "./engine/factors";
@@ -47,6 +47,7 @@ const SOURCE_ICONS: Record<string, typeof Factory> = {
   agriculture: Wheat,
   effluents: Waves,
   solid_waste: Trash2,
+  land_use: TreePine,
   purchased_goods: Package,
   capital_goods: Building2,
   fuel_energy_upstream: Droplets,
@@ -211,6 +212,18 @@ export function PegadaInventarioPage() {
         {active === "industrial_processes" && <IndustrialProcessesSource {...commonProps} entries={entriesOf("industrial_processes")} />}
         {active === "agriculture" && <AgricultureSource {...commonProps} entries={entriesOf("agriculture")} />}
         {active === "effluents" && <EffluentSource {...commonProps} entries={entriesOf("effluents")} />}
+        {active === "land_use" && (
+          <DirectGasEmissionSource
+            {...commonProps}
+            category="land_use"
+            entries={entriesOf("land_use")}
+            title="Mudança no uso do solo"
+            description="Supressão de vegetação, reflorestamento e outras conversões de uso do solo (Escopo 1). Relate a massa emitida do gás; a absorção de CO₂ (ex.: reflorestamento) entra como remoção biogênica, reportada à parte. O cálculo detalhado por estoque de carbono e bioma entra numa fase seguinte."
+            sourceRefLabel="Registro da fonte"
+            sourceRefPlaceholder="ex.: BR-001"
+            descriptionFieldLabel="Descrição da atividade"
+          />
+        )}
         {active === "solid_waste" && <SolidWasteSource {...commonProps} entries={entriesOf("solid_waste")} />}
         {active === "fuel_energy_upstream" && <FuelEnergyUpstreamSource {...commonProps} entries={entriesOf("fuel_energy_upstream")} />}
         {SCOPE3_GAS_ENTRY_CATEGORIES.includes(active as Scope3GasEntryCategory) && (

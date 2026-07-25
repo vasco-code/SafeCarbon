@@ -22,7 +22,7 @@ export function DirectGasEmissionSource({
   reload,
   readOnly,
 }: SourceProps & {
-  category: "industrial_processes" | "agriculture" | Scope3GasEntryCategory;
+  category: "industrial_processes" | "agriculture" | "land_use" | Scope3GasEntryCategory;
   title: string;
   description: string;
   sourceRefLabel: string;

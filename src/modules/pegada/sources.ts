@@ -17,7 +17,7 @@ export const SOURCES: SourceMeta[] = [
   { category: "fugitive", label: "Emissões fugitivas", scope: 1, implemented: true },
   { category: "industrial_processes", label: "Processos industriais", scope: 1, implemented: true },
   { category: "agriculture", label: "Atividades de agricultura", scope: 1, implemented: true },
-  { category: "land_use", label: "Mudança no uso do solo", scope: 1, implemented: false },
+  { category: "land_use", label: "Mudança no uso do solo", scope: 1, implemented: true },
   { category: "solid_waste", label: "Resíduos sólidos", scope: 1, implemented: true },
   { category: "effluents", label: "Efluentes", scope: 1, implemented: true },
   // Escopo 2

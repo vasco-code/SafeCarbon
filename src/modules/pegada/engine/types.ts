@@ -22,6 +22,7 @@ export type SourceCategory =
   | "agriculture"
   | "effluents"
   | "solid_waste"
+  | "land_use"
   // Escopo 3 — as 15 categorias do GHG Protocol. Cat. 3/6/7 têm cálculo
   // próprio (fator de atividade); as demais seguem o modelo da aba
   // "Categorias de Escopo 3": massa do gás relatada direto × GWP.
@@ -70,6 +71,7 @@ export const SCOPE_OF_SOURCE: Record<SourceCategory, Scope> = {
   agriculture: 1,
   effluents: 1,
   solid_waste: 1,
+  land_use: 1,
   purchased_goods: 3,
   capital_goods: 3,
   fuel_energy_upstream: 3,
@@ -279,6 +281,12 @@ export type ActivityData =
   | ({ source_category: "industrial_processes" } & DirectGasEmissionData)
   | ({ source_category: "agriculture" } & DirectGasEmissionData)
   | ({ source_category: "effluents" } & EffluentData)
+  // Mudança no uso do solo — Fase A: relato direto por gás (Tabela 3 da aba
+  // "Mudança no uso do solo"), com CO2 biogênico emitido/removido à parte
+  // (supressão de vegetação emite; reflorestamento remove). O cálculo
+  // detalhado (diferença de estoque de carbono com amortização de 20 anos e
+  // fatores por bioma) fica para uma fase seguinte.
+  | ({ source_category: "land_use" } & DirectGasEmissionData)
   | ({ source_category: "solid_waste" } & SolidWasteData)
   | ({ source_category: "fuel_energy_upstream" } & FuelEnergyUpstreamData)
   | ({ source_category: Scope3GasEntryCategory } & DirectGasEmissionData);
