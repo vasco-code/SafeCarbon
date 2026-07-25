@@ -82,8 +82,11 @@ function calcFuelEnergyUpstream(data: ActivityData, ctx: FactorContext): CalcRes
 // pelo GWP do próprio gás. Ver FugitiveEmissionData em types.ts.
 function calcFugitive(data: ActivityData, ctx: FactorContext): CalcResult {
   if (data.source_category !== "fugitive") return { ok: false, missingFactor: "tipo" };
-  const gwp = ctx.gwp.get(data.gas);
-  if (gwp == null) return { ok: false, missingFactor: `GWP para o gás ${data.gas}` };
+  // O "gás" pode ser um composto (R-410A etc.): nesse caso a massa é rateada
+  // entre os componentes e cada parcela converte pelo GWP do próprio gás.
+  const blend = ctx.blends.get(data.gas);
+  const gwp = blend ? null : ctx.gwp.get(data.gas);
+  if (!blend && gwp == null) return { ok: false, missingFactor: `GWP para o gás ${data.gas}` };
 
   let netKg: number;
   switch (data.method) {
@@ -110,11 +113,44 @@ function calcFugitive(data: ActivityData, ctx: FactorContext): CalcResult {
   }
 
   const massT = netKg / 1000;
-  const buckets = gasMassBuckets(data.gas, massT);
+
+  if (blend) {
+    // Soma as parcelas de cada componente nos baldes de gás e no CO2e.
+    let co2 = 0;
+    let ch4 = 0;
+    let n2o = 0;
+    const others: Record<string, number> = {};
+    let co2e = 0;
+    for (const c of blend.components) {
+      const g = ctx.gwp.get(c.gas);
+      if (g == null) return { ok: false, missingFactor: `GWP para o gás ${c.gas} (composto ${data.gas})` };
+      const part = massT * c.fraction;
+      const b = gasMassBuckets(c.gas, part);
+      co2 += b.co2_t;
+      ch4 += b.ch4_t;
+      n2o += b.n2o_t;
+      for (const [k, v] of Object.entries(b.other_gases_t ?? {})) others[k] = (others[k] ?? 0) + v;
+      co2e += part * g;
+    }
+    return {
+      ok: true,
+      computed: {
+        co2_t: co2,
+        ch4_t: ch4,
+        n2o_t: n2o,
+        other_gases_t: Object.keys(others).length > 0 ? others : undefined,
+        biogenic_co2_t: 0,
+        co2e_t: co2e,
+        factor_refs: [`blend:${data.gas}`, ...blend.components.map((c) => `gwp:${c.gas}`)],
+        ar_version: ctx.arVersion,
+      },
+    };
+  }
+
   const computed: Computed = {
-    ...buckets,
+    ...gasMassBuckets(data.gas, massT),
     biogenic_co2_t: 0,
-    co2e_t: massT * gwp,
+    co2e_t: massT * (gwp ?? 0),
     factor_refs: [`gwp:${data.gas}`],
     ar_version: ctx.arVersion,
   };

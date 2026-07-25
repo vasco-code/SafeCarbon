@@ -53,6 +53,16 @@ export function FugitiveSource({ inventoryId, ctx, entries, reload, readOnly }: 
     return a.localeCompare(b);
   });
 
+  // Compostos (R-410A etc.) com o GWP efetivo já ponderado pelos componentes,
+  // para o usuário ver o que está escolhendo.
+  const blendOptions = [...ctx.blends.values()]
+    .map((b) => ({
+      blend: b.blend,
+      gwp: b.components.reduce((s, c) => s + c.fraction * (ctx.gwp.get(c.gas) ?? 0), 0),
+      composition: b.components.map((c) => `${c.gas} ${fmt(c.fraction * 100, 0)}%`).join(" + "),
+    }))
+    .sort((a, b) => a.blend.localeCompare(b.blend, "pt-BR"));
+
   const [gas, setGas] = useState("HFC-134a");
   const [method, setMethod] = useState<FugitiveMethod>("lifecycle");
   const [fields, setFields] = useState<Record<string, string>>({});
@@ -130,11 +140,22 @@ export function FugitiveSource({ inventoryId, ctx, entries, reload, readOnly }: 
 
           <label htmlFor="fg-gas">Gás ou composto</label>
           <select id="fg-gas" value={gas} onChange={(e) => setGas(e.target.value)}>
-            {gasOptions.map((g) => (
-              <option key={g} value={g}>
-                {GAS_LABELS[g] ?? g} — GWP {fmt(ctx.gwp.get(g) ?? 0, 0)}
-              </option>
-            ))}
+            <optgroup label="Gases puros">
+              {gasOptions.map((g) => (
+                <option key={g} value={g}>
+                  {GAS_LABELS[g] ?? g} — GWP {fmt(ctx.gwp.get(g) ?? 0, 0)}
+                </option>
+              ))}
+            </optgroup>
+            {blendOptions.length > 0 && (
+              <optgroup label="Compostos (misturas)">
+                {blendOptions.map((b) => (
+                  <option key={b.blend} value={b.blend}>
+                    {b.blend} — GWP {fmt(b.gwp, 0)} ({b.composition})
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
 
           <label htmlFor="fg-method">Método de cálculo</label>

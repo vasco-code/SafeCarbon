@@ -332,6 +332,31 @@ def print_landfill_seed(rs):
         )
 
 
+def print_blends_seed(fug):
+    """Seed isolado de ghg_gas_blends (compostos das emissões fugitivas).
+    Tabela auxiliar B328:Q453 da aba "Emissões fugitivas": B=composto, e então
+    pares (gás, fração) em C/D, E/F, G/H, I/J, K/L."""
+    rows = []
+    for r in range(328, 454):
+        blend = fug.cell(row=r, column=2).value
+        if not blend:
+            continue
+        for i in range(5):
+            gas = fug.cell(row=r, column=3 + i * 2).value
+            frac = fug.cell(row=r, column=4 + i * 2).value
+            if gas and isinstance(frac, (int, float)) and frac > 0:
+                rows.append((str(blend).strip(), str(gas).strip(), float(frac)))
+    blends = {b for b, _, _ in rows}
+    print("-- Seed de ghg_gas_blends (compostos das fugitivas) — gerado por scripts/extract_ghg_factors.py --blends")
+    print(f"-- {len(blends)} compostos, {len(rows)} componentes\n")
+    print("delete from ghg_gas_blends;\n")
+    for blend, gas, frac in rows:
+        print(
+            "insert into ghg_gas_blends (blend, gas, fraction, source) values ("
+            f"{sqlstr(blend)}, {sqlstr(gas)}, {frac!r}, 'GHG Protocol FGV v2026.0.1');"
+        )
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     flags = [a for a in sys.argv[1:] if a.startswith("--")]
@@ -358,6 +383,10 @@ def main():
 
     if "--landfill" in flags:
         print_landfill_seed(wb["Resíduos sólidos"])
+        return
+
+    if "--blends" in flags:
+        print_blends_seed(wb["Emissões fugitivas"])
         return
 
     fuels = extract_fuels(fe)

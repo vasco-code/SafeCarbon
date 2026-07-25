@@ -76,11 +76,15 @@ export interface IncinerationFactor {
   fossil_fraction: number;
 }
 
-// Escopo 1 — Combustão móvel por frota (Tabelas 6-7 da aba "Fatores de
-// Emissão"). CH4/N2O em kg por litro do combustível comercial, por tipo de
-// veículo e ano da frota — o CO2 continua vindo de FuelFactor (é função do
-// combustível, não da tecnologia). `year_key`: "all" (Todos os anos), "2000-"
-// (até 2000) ou o ano ("2001".."2025").
+// Composto (blend) de gases refrigerantes → componentes com fração mássica.
+// A massa do blend é rateada entre os componentes e cada parcela converte pelo
+// GWP do próprio gás. Blends com componentes que somam < 1 são normais: o
+// restante costuma ser HCFC, que não é gás de Kyoto e fica fora do inventário.
+export interface GasBlend {
+  blend: string;
+  components: { gas: string; fraction: number }[];
+}
+
 // Escopo 1 — Resíduos sólidos / aterro (modelo FOD). Parâmetros por categoria
 // de resíduo aterrado: DOC (carbono orgânico degradável, base úmida), DOCf
 // (fração que de fato decompõe) e k (constante de decaimento anual).
@@ -110,6 +114,11 @@ export function mcfOf(qualityKey: string): number {
   return LANDFILL_QUALITIES.find((q) => q.key === qualityKey)?.mcf ?? 0;
 }
 
+// Escopo 1 — Combustão móvel por frota (Tabelas 6-7 da aba "Fatores de
+// Emissão"). CH4/N2O em kg por litro do combustível comercial, por tipo de
+// veículo e ano da frota — o CO2 continua vindo de FuelFactor (é função do
+// combustível, não da tecnologia). `year_key`: "all" (Todos os anos), "2000-"
+// (até 2000) ou o ano ("2001".."2025").
 export interface FleetFactor {
   fuel_label: string | null;
   vehicle_type: string;
@@ -129,6 +138,7 @@ export interface FactorContext {
   fleet: Map<string, FleetFactor>; // key `${vehicle_type}:${year_key}`
   fleetTypes: string[]; // tipos de veículo distintos, ordenados
   landfill: LandfillFactor[]; // ordenado por position
+  blends: Map<string, GasBlend>; // key: nome do composto (ex.: "R-410A")
   arVersion: string;
 }
 
@@ -170,7 +180,7 @@ export function getFleet(ctx: FactorContext, vehicleType: string, year?: number)
 // Carrega todas as tabelas de fator uma vez e indexa em Map (dado de
 // referência, pequeno e cacheável — ~800 combustíveis são dezenas de KB).
 export async function loadFactorContext(): Promise<FactorContext> {
-  const [fuelsRes, gridRes, genericRes, gwpRes, wttRes, effluentRes, incinRes, fleetRes, landfillRes] =
+  const [fuelsRes, gridRes, genericRes, gwpRes, wttRes, effluentRes, incinRes, fleetRes, landfillRes, blendsRes] =
     await Promise.all([
     supabase.from("ghg_fuel_factors").select("*"),
     supabase.from("ghg_grid_factors").select("*"),
@@ -181,6 +191,7 @@ export async function loadFactorContext(): Promise<FactorContext> {
     supabase.from("ghg_incineration_factors").select("*"),
     supabase.from("ghg_fleet_factors").select("*"),
     supabase.from("ghg_landfill_factors").select("*"),
+    supabase.from("ghg_gas_blends").select("*"),
   ]);
 
   const fuels = new Map<number, FuelFactor>();
@@ -313,8 +324,16 @@ export async function loadFactorContext(): Promise<FactorContext> {
   }
   landfill.sort((a, b) => a.position - b.position);
 
+  const blends = new Map<string, GasBlend>();
+  for (const r of (blendsRes.data ?? []) as Record<string, number | string>[]) {
+    const name = String(r.blend);
+    const entry = blends.get(name) ?? { blend: name, components: [] };
+    entry.components.push({ gas: String(r.gas), fraction: Number(r.fraction ?? 0) });
+    blends.set(name, entry);
+  }
+
   return {
-    fuels, grid, generic, gwp, wttFuels, effluents, incineration, fleet, fleetTypes, landfill,
+    fuels, grid, generic, gwp, wttFuels, effluents, incineration, fleet, fleetTypes, landfill, blends,
     arVersion: AR_VERSION,
   };
 }

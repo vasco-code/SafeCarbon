@@ -632,6 +632,18 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["ghg_landfill_factors"]["Row"]>;
         Relationships: [];
       };
+      ghg_gas_blends: {
+        Row: {
+          id: string;
+          blend: string;
+          gas: string;
+          fraction: number;
+          source: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ghg_gas_blends"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["ghg_gas_blends"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: {
       production_period_summary: {
