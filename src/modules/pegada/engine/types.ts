@@ -59,13 +59,16 @@ export interface StationaryCombustionData {
 }
 
 export interface MobileCombustionData {
-  // Fase 1: combustão móvel usa os mesmos fatores de combustível da
-  // estacionária (CO2 idêntico por combustível; CH4/N2O por setor — uma
-  // aproximação razoável). Fatores por frota/veículo (Tabelas 6-7 da planilha)
-  // entram numa fase seguinte via ghg_generic_factors, sem migração.
   fuel_ref_no: number;
   quantity: number;
   sector: ActivitySector;
+  // Refinamento por frota (Tabelas 6-7): quando informado, CH4/N2O vêm de
+  // ghg_fleet_factors (kg/litro, por tipo de veículo e ano da frota) em vez do
+  // fator por setor — CH4/N2O de veículos dependem da tecnologia, não do setor.
+  // O CO2 segue vindo do combustível em qualquer caso. Sem `fleet_type`, o
+  // cálculo é o antigo (por setor) — lançamentos existentes seguem válidos.
+  fleet_type?: string;
+  fleet_year?: number;
 }
 
 export interface ElectricityLocationData {

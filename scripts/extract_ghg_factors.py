@@ -260,6 +260,55 @@ def print_incineration_seed(rs):
         )
 
 
+FLEET_YEARS = ["all", "2000-"] + [str(y) for y in range(2001, 2026)]
+
+
+def extract_fleet_factors(fe):
+    """Fatores de CH4/N2O por frota e ano do veículo — Tabela 6 (combustíveis
+    fósseis, linhas 149-178) e Tabela 7 (biocombustíveis, 185-193) da aba
+    "Fatores de Emissão". Bloco de CH4 em E..AE e o de N2O em AF..BF, ambos na
+    ordem: "Todos os anos", "até 2000", 2001..2025. Valores em kg/litro do
+    combustível COMERCIAL (a emissão é fator × litros / 1000 = toneladas)."""
+    rows = []
+    for r1, r2 in ((149, 178), (185, 193)):
+        current_fuel = None
+        for r in range(r1, r2 + 1):
+            fuel = fe.cell(row=r, column=3).value
+            if fuel:
+                current_fuel = str(fuel).strip()
+            vt = fe.cell(row=r, column=4).value
+            if not vt or str(vt).strip() == "Tipo de Veículo":
+                continue
+            for i, year_key in enumerate(FLEET_YEARS):
+                ch4 = fe.cell(row=r, column=5 + i).value
+                n2o = fe.cell(row=r, column=32 + i).value
+                has = lambda v: isinstance(v, (int, float))
+                if has(ch4) or has(n2o):
+                    rows.append({
+                        "fuel_label": current_fuel,
+                        "vehicle_type": str(vt).strip(),
+                        "year_key": year_key,
+                        "ch4_kg_l": ch4 if has(ch4) else 0,
+                        "n2o_kg_l": n2o if has(n2o) else 0,
+                    })
+    return rows
+
+
+def print_fleet_seed(fe):
+    """Seed isolado de ghg_fleet_factors (combustão móvel por frota)."""
+    rows = extract_fleet_factors(fe)
+    types = sorted({r["vehicle_type"] for r in rows})
+    print("-- Seed de ghg_fleet_factors (CH4/N2O por frota e ano) — gerado por scripts/extract_ghg_factors.py --fleet")
+    print(f"-- {len(rows)} linhas, {len(types)} tipos de veículo\n")
+    print("delete from ghg_fleet_factors;\n")
+    for e in rows:
+        print(
+            "insert into ghg_fleet_factors (fuel_label, vehicle_type, year_key, ch4_kg_l, n2o_kg_l, source) values ("
+            f"{sqlstr(e['fuel_label'])}, {sqlstr(e['vehicle_type'])}, {sqlstr(e['year_key'])}, "
+            f"{num0(e['ch4_kg_l'])}, {num0(e['n2o_kg_l'])}, 'MMA (2014) / CETESB (2023) / DEFRA via GHG Protocol FGV v2026.0.1');"
+        )
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     flags = [a for a in sys.argv[1:] if a.startswith("--")]
@@ -278,6 +327,10 @@ def main():
 
     if "--incineration" in flags:
         print_incineration_seed(wb["Resíduos sólidos"])
+        return
+
+    if "--fleet" in flags:
+        print_fleet_seed(fe)
         return
 
     fuels = extract_fuels(fe)

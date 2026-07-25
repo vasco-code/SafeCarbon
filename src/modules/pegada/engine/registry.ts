@@ -1,5 +1,5 @@
 import type { ActivityData, CalcResult, Computed, SourceCategory } from "./types";
-import { effluentKey, genericKey, getGrid, type FactorContext } from "./factors";
+import { effluentKey, genericKey, getFleet, getGrid, type FactorContext } from "./factors";
 
 // Motor de cálculo determinístico, por source_category. Cada função recebe o
 // activity_data cru + o contexto de fatores indexado e devolve o `computed`
@@ -300,8 +300,21 @@ const calculators: Record<SourceCategory, Calculator> = {
     if (!fuel) return { ok: false, missingFactor: `combustível ref ${data.fuel_ref_no}` };
     const q = data.quantity;
     const co2 = (q * fuel.co2_kg_un) / 1000;
-    const ch4 = (q * fuel.ch4_kg_un[data.sector]) / 1000;
-    const n2o = (q * fuel.n2o_kg_un[data.sector]) / 1000;
+    // CH4/N2O: por frota quando informada (fator por tecnologia/ano, Tabelas
+    // 6-7), senão o fator por setor do combustível (aproximação anterior).
+    const factorRefs = [`fuel:${fuel.ref_no}`];
+    let ch4: number;
+    let n2o: number;
+    if (data.fleet_type) {
+      const f = getFleet(ctx, data.fleet_type, data.fleet_year);
+      if (!f) return { ok: false, missingFactor: `frota ${data.fleet_type}` };
+      ch4 = (q * f.ch4_kg_l) / 1000;
+      n2o = (q * f.n2o_kg_l) / 1000;
+      factorRefs.push(`fleet:${f.vehicle_type}:${f.year_key}`);
+    } else {
+      ch4 = (q * fuel.ch4_kg_un[data.sector]) / 1000;
+      n2o = (q * fuel.n2o_kg_un[data.sector]) / 1000;
+    }
     const biogenic = fuel.is_biofuel ? co2 : 0;
     const fossilCo2 = fuel.is_biofuel ? 0 : co2;
     const computed: Computed = {
@@ -310,7 +323,7 @@ const calculators: Record<SourceCategory, Calculator> = {
       n2o_t: n2o,
       biogenic_co2_t: biogenic,
       co2e_t: co2eFossil(ctx, fossilCo2, ch4, n2o),
-      factor_refs: [`fuel:${fuel.ref_no}`],
+      factor_refs: factorRefs,
       ar_version: ctx.arVersion,
     };
     return { ok: true, computed };

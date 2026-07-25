@@ -604,6 +604,20 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["ghg_incineration_factors"]["Row"]>;
         Relationships: [];
       };
+      ghg_fleet_factors: {
+        Row: {
+          id: string;
+          fuel_label: string | null;
+          vehicle_type: string;
+          year_key: string;
+          ch4_kg_l: number;
+          n2o_kg_l: number;
+          source: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ghg_fleet_factors"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["ghg_fleet_factors"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: {
       production_period_summary: {

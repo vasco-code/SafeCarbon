@@ -76,6 +76,19 @@ export interface IncinerationFactor {
   fossil_fraction: number;
 }
 
+// Escopo 1 — Combustão móvel por frota (Tabelas 6-7 da aba "Fatores de
+// Emissão"). CH4/N2O em kg por litro do combustível comercial, por tipo de
+// veículo e ano da frota — o CO2 continua vindo de FuelFactor (é função do
+// combustível, não da tecnologia). `year_key`: "all" (Todos os anos), "2000-"
+// (até 2000) ou o ano ("2001".."2025").
+export interface FleetFactor {
+  fuel_label: string | null;
+  vehicle_type: string;
+  year_key: string;
+  ch4_kg_l: number;
+  n2o_kg_l: number;
+}
+
 export interface FactorContext {
   fuels: Map<number, FuelFactor>;
   grid: Map<string, GridFactor>; // key `${region}:${year}` (mês agregado no anual)
@@ -84,6 +97,8 @@ export interface FactorContext {
   wttFuels: Map<string, WttFuelFactor>; // key: name_pt normalizado
   effluents: Map<string, EffluentFactor>; // key: `${domain}:${treatment_type}`
   incineration: IncinerationFactor[]; // ordenado por position
+  fleet: Map<string, FleetFactor>; // key `${vehicle_type}:${year_key}`
+  fleetTypes: string[]; // tipos de veículo distintos, ordenados
   arVersion: string;
 }
 
@@ -96,11 +111,36 @@ export function genericKey(sourceCategory: string, factorKey: string) {
 export function effluentKey(domain: string, treatmentType: string) {
   return `${domain}:${treatmentType}`;
 }
+export function fleetKey(vehicleType: string, yearKey: string) {
+  return `${vehicleType}:${yearKey}`;
+}
+
+// Resolve o fator da frota tolerando anos fora da tabela: o ano exato, senão
+// "all" (tipos que têm fator único), senão "2000-" para anos antigos e o mais
+// recente disponível para anos futuros.
+export function getFleet(ctx: FactorContext, vehicleType: string, year?: number): FleetFactor | undefined {
+  const exact = year != null ? ctx.fleet.get(fleetKey(vehicleType, String(year))) : undefined;
+  if (exact) return exact;
+  const all = ctx.fleet.get(fleetKey(vehicleType, "all"));
+  if (all) return all;
+  if (year != null && year <= 2000) {
+    const old = ctx.fleet.get(fleetKey(vehicleType, "2000-"));
+    if (old) return old;
+  }
+  const candidates = [...ctx.fleet.values()]
+    .filter((f) => f.vehicle_type === vehicleType && /^\d{4}$/.test(f.year_key))
+    .sort((a, b) => Number(a.year_key) - Number(b.year_key));
+  if (candidates.length === 0) return ctx.fleet.get(fleetKey(vehicleType, "2000-"));
+  if (year != null && year < Number(candidates[0].year_key)) {
+    return ctx.fleet.get(fleetKey(vehicleType, "2000-")) ?? candidates[0];
+  }
+  return candidates[candidates.length - 1];
+}
 
 // Carrega todas as tabelas de fator uma vez e indexa em Map (dado de
 // referência, pequeno e cacheável — ~800 combustíveis são dezenas de KB).
 export async function loadFactorContext(): Promise<FactorContext> {
-  const [fuelsRes, gridRes, genericRes, gwpRes, wttRes, effluentRes, incinRes] = await Promise.all([
+  const [fuelsRes, gridRes, genericRes, gwpRes, wttRes, effluentRes, incinRes, fleetRes] = await Promise.all([
     supabase.from("ghg_fuel_factors").select("*"),
     supabase.from("ghg_grid_factors").select("*"),
     supabase.from("ghg_generic_factors").select("*"),
@@ -108,6 +148,7 @@ export async function loadFactorContext(): Promise<FactorContext> {
     supabase.from("ghg_wtt_fuel_factors").select("*"),
     supabase.from("ghg_effluent_factors").select("*"),
     supabase.from("ghg_incineration_factors").select("*"),
+    supabase.from("ghg_fleet_factors").select("*"),
   ]);
 
   const fuels = new Map<number, FuelFactor>();
@@ -213,7 +254,22 @@ export async function loadFactorContext(): Promise<FactorContext> {
   }
   incineration.sort((a, b) => a.position - b.position);
 
-  return { fuels, grid, generic, gwp, wttFuels, effluents, incineration, arVersion: AR_VERSION };
+  const fleet = new Map<string, FleetFactor>();
+  for (const r of (fleetRes.data ?? []) as Record<string, number | string | null>[]) {
+    const f: FleetFactor = {
+      fuel_label: r.fuel_label == null ? null : String(r.fuel_label),
+      vehicle_type: String(r.vehicle_type),
+      year_key: String(r.year_key),
+      ch4_kg_l: Number(r.ch4_kg_l ?? 0),
+      n2o_kg_l: Number(r.n2o_kg_l ?? 0),
+    };
+    fleet.set(fleetKey(f.vehicle_type, f.year_key), f);
+  }
+  const fleetTypes = [...new Set([...fleet.values()].map((f) => f.vehicle_type))].sort((a, b) =>
+    a.localeCompare(b, "pt-BR"),
+  );
+
+  return { fuels, grid, generic, gwp, wttFuels, effluents, incineration, fleet, fleetTypes, arVersion: AR_VERSION };
 }
 
 export function getGrid(ctx: FactorContext, year: number, region = "SIN"): GridFactor | undefined {
