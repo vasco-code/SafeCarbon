@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft, Leaf, Factory, Fuel, Zap, Plug, Plane, Bus, Lock, FlaskConical, Wheat, Droplets,
   Wind, Waves, Trash2, Package, Building2, Truck, Recycle, Warehouse, Cog, ShoppingCart, Store,
-  TrendingUp, PackageOpen,
+  TrendingUp, PackageOpen, FileDown,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { loadFactorContext, type FactorContext } from "./engine/factors";
@@ -26,6 +26,7 @@ import { EffluentSource } from "./sources/EffluentSource";
 import { SolidWasteSource } from "./sources/SolidWasteSource";
 import { FuelEnergyUpstreamSource } from "./sources/FuelEnergyUpstreamSource";
 import { ImportPlanilhaPanel } from "./ImportPlanilhaPanel";
+import { downloadInventoryReport } from "./inventoryReport";
 
 interface InventoryHeader {
   id: string;
@@ -139,6 +140,15 @@ export function PegadaInventarioPage() {
         <span className={`badge ${header.status === "final" ? "badge-success" : "badge-neutral"}`}>
           {header.status === "final" ? "Finalizado" : "Rascunho"}
         </span>
+        <button
+          type="button"
+          onClick={() => downloadInventoryReport(header, entries as unknown as InventoryEntry[])}
+          disabled={entries.length === 0}
+          title={entries.length === 0 ? "Lance ao menos uma fonte para gerar o relatório" : undefined}
+        >
+          <FileDown size={15} />
+          Exportar relatório (.doc)
+        </button>
       </div>
 
       <div className="report-kpi-grid" style={{ marginBottom: "1.5rem" }}>
