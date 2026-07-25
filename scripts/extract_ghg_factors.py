@@ -309,6 +309,29 @@ def print_fleet_seed(fe):
         )
 
 
+# DOCf e k por categoria de resíduo aterrado — lidos das fórmulas de DDOCmd
+# (linhas 74-82: DOCf_mod/_high/_less) e DDOCma (linhas 84-92: k_*) da aba
+# "Resíduos sólidos". Ordem = A..I.
+LANDFILL_DOCF = [0.5, 0.5, 0.7, 0.1, 0.7, 0.5, 0.5, 0.7, 0.7]
+LANDFILL_K = [0.07, 0.07, 0.4, 0.035, 0.17, 0.17, 0.17, 0.4, 0.4]
+
+
+def print_landfill_seed(rs):
+    """Seed isolado de ghg_landfill_factors (aterro/FOD). Categorias e DOC(bu)
+    da tabela auxiliar em BJ61:BN69 da aba "Resíduos sólidos"."""
+    print("-- Seed de ghg_landfill_factors (aterro, modelo FOD) — gerado por scripts/extract_ghg_factors.py --landfill")
+    print(f"-- {len(LANDFILL_K)} categorias de resíduo\n")
+    print("delete from ghg_landfill_factors;\n")
+    for i, r in enumerate(range(61, 70)):
+        cat = str(rs.cell(row=r, column=62).value).strip()  # BJ
+        doc = rs.cell(row=r, column=66).value  # BN
+        print(
+            "insert into ghg_landfill_factors (position, category, doc, docf, k, source) values ("
+            f"{i + 1}, {sqlstr(cat)}, {num0(doc)}, {LANDFILL_DOCF[i]!r}, {LANDFILL_K[i]!r}, "
+            "'IPCC 2006/2019 via GHG Protocol FGV v2026.0.1');"
+        )
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     flags = [a for a in sys.argv[1:] if a.startswith("--")]
@@ -331,6 +354,10 @@ def main():
 
     if "--fleet" in flags:
         print_fleet_seed(fe)
+        return
+
+    if "--landfill" in flags:
+        print_landfill_seed(wb["Resíduos sólidos"])
         return
 
     fuels = extract_fuels(fe)

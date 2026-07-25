@@ -81,6 +81,35 @@ export interface IncinerationFactor {
 // veículo e ano da frota — o CO2 continua vindo de FuelFactor (é função do
 // combustível, não da tecnologia). `year_key`: "all" (Todos os anos), "2000-"
 // (até 2000) ou o ano ("2001".."2025").
+// Escopo 1 — Resíduos sólidos / aterro (modelo FOD). Parâmetros por categoria
+// de resíduo aterrado: DOC (carbono orgânico degradável, base úmida), DOCf
+// (fração que de fato decompõe) e k (constante de decaimento anual).
+export interface LandfillFactor {
+  position: number;
+  category: string;
+  doc: number;
+  docf: number;
+  k: number;
+}
+
+// Qualidade do local de disposição → MCF (fator de correção de metano), da aba
+// "Resíduos sólidos" (Passo 4) via Listas!BT13:BU20. Lookup pequeno e acoplado
+// aos rótulos da UI, por isso constante do motor e não tabela.
+export const LANDFILL_QUALITIES: { key: string; mcf: number; label: string }[] = [
+  { key: "A", mcf: 1, label: "A — Aterro sanitário" },
+  { key: "B", mcf: 0.5, label: "B — Aterro semi-aeróbio" },
+  { key: "C", mcf: 0.7, label: "C — Aterro semi-aeróbio (mal manejado)" },
+  { key: "D", mcf: 0.4, label: "D — Aterro com aeração ativa" },
+  { key: "E", mcf: 0.7, label: "E — Aterro com aeração ativa (mal manejado)" },
+  { key: "F", mcf: 0.8, label: "F — Aterro com profundidade ≥ 5 m" },
+  { key: "G", mcf: 0.4, label: "G — Aterro com profundidade < 5 m" },
+  { key: "H", mcf: 0.6, label: "H — Sem classificação conhecida" },
+];
+
+export function mcfOf(qualityKey: string): number {
+  return LANDFILL_QUALITIES.find((q) => q.key === qualityKey)?.mcf ?? 0;
+}
+
 export interface FleetFactor {
   fuel_label: string | null;
   vehicle_type: string;
@@ -99,6 +128,7 @@ export interface FactorContext {
   incineration: IncinerationFactor[]; // ordenado por position
   fleet: Map<string, FleetFactor>; // key `${vehicle_type}:${year_key}`
   fleetTypes: string[]; // tipos de veículo distintos, ordenados
+  landfill: LandfillFactor[]; // ordenado por position
   arVersion: string;
 }
 
@@ -140,7 +170,8 @@ export function getFleet(ctx: FactorContext, vehicleType: string, year?: number)
 // Carrega todas as tabelas de fator uma vez e indexa em Map (dado de
 // referência, pequeno e cacheável — ~800 combustíveis são dezenas de KB).
 export async function loadFactorContext(): Promise<FactorContext> {
-  const [fuelsRes, gridRes, genericRes, gwpRes, wttRes, effluentRes, incinRes, fleetRes] = await Promise.all([
+  const [fuelsRes, gridRes, genericRes, gwpRes, wttRes, effluentRes, incinRes, fleetRes, landfillRes] =
+    await Promise.all([
     supabase.from("ghg_fuel_factors").select("*"),
     supabase.from("ghg_grid_factors").select("*"),
     supabase.from("ghg_generic_factors").select("*"),
@@ -149,6 +180,7 @@ export async function loadFactorContext(): Promise<FactorContext> {
     supabase.from("ghg_effluent_factors").select("*"),
     supabase.from("ghg_incineration_factors").select("*"),
     supabase.from("ghg_fleet_factors").select("*"),
+    supabase.from("ghg_landfill_factors").select("*"),
   ]);
 
   const fuels = new Map<number, FuelFactor>();
@@ -269,7 +301,22 @@ export async function loadFactorContext(): Promise<FactorContext> {
     a.localeCompare(b, "pt-BR"),
   );
 
-  return { fuels, grid, generic, gwp, wttFuels, effluents, incineration, fleet, fleetTypes, arVersion: AR_VERSION };
+  const landfill: LandfillFactor[] = [];
+  for (const r of (landfillRes.data ?? []) as Record<string, number | string>[]) {
+    landfill.push({
+      position: Number(r.position),
+      category: String(r.category),
+      doc: Number(r.doc ?? 0),
+      docf: Number(r.docf ?? 0),
+      k: Number(r.k ?? 0),
+    });
+  }
+  landfill.sort((a, b) => a.position - b.position);
+
+  return {
+    fuels, grid, generic, gwp, wttFuels, effluents, incineration, fleet, fleetTypes, landfill,
+    arVersion: AR_VERSION,
+  };
 }
 
 export function getGrid(ctx: FactorContext, year: number, region = "SIN"): GridFactor | undefined {

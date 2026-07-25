@@ -1,24 +1,37 @@
 import { useState, type FormEvent } from "react";
+import { LANDFILL_QUALITIES } from "../engine/factors";
 import { calculate } from "../engine/registry";
 import type { SolidWasteMethod } from "../engine/types";
 import { addEntry } from "../entryActions";
 import { EntryTable, fmt, type SourceProps } from "./common";
 
-// Resíduos sólidos (Escopo 1) — Fase A: compostagem, incineração e relato
-// direto. O aterro (modelo FOD, série de 30 anos) fica para a Fase B.
-// Ver calcSolidWaste no registry.
+// Resíduos sólidos (Escopo 1): aterro (modelo FOD, com série histórica de
+// deposição), compostagem, incineração e relato direto. Ver calcSolidWaste.
 
 const METHOD_LABELS: Record<SolidWasteMethod, string> = {
+  landfill: "Aterro (modelo FOD)",
   composting: "Compostagem",
   incineration: "Incineração",
   direct: "Relato direto de CO₂/CH₄/N₂O",
 };
 
-export function SolidWasteSource({ inventoryId, ctx, entries, reload, readOnly }: SourceProps) {
+export function SolidWasteSource({
+  inventoryId,
+  ctx,
+  entries,
+  reload,
+  readOnly,
+  inventoryYear,
+}: SourceProps & { inventoryYear: number }) {
   // Categorias A-K (a última, "Outros", recebe a fração restante no cálculo).
   const namedCategories = ctx.incineration.slice(0, Math.max(0, ctx.incineration.length - 1));
 
-  const [method, setMethod] = useState<SolidWasteMethod>("composting");
+  const [method, setMethod] = useState<SolidWasteMethod>("landfill");
+  // aterro (FOD)
+  const [landfillComp, setLandfillComp] = useState<Record<string, string>>({});
+  const [landfillYears, setLandfillYears] = useState<
+    { year: string; waste_t: string; quality: string; ch4_recovered_t: string }[]
+  >([{ year: String(inventoryYear), waste_t: "", quality: "A", ch4_recovered_t: "" }]);
   // compostagem
   const [massT, setMassT] = useState("");
   const [efCh4Kg, setEfCh4Kg] = useState("");
@@ -44,6 +57,28 @@ export function SolidWasteSource({ inventoryId, ctx, entries, reload, readOnly }
   const compositionSum = namedCategories.reduce((s, f) => s + (Number(composition[f.category]) || 0), 0);
 
   function buildData() {
+    if (method === "landfill") {
+      const comp: Record<string, number> = {};
+      for (const f of ctx.landfill) {
+        const v = Number(landfillComp[f.category]);
+        if (v > 0) comp[f.category] = v;
+      }
+      return {
+        source_category: "solid_waste",
+        method: "landfill",
+        inventory_year: inventoryYear,
+        landfill_composition: comp,
+        years: landfillYears
+          .filter((y) => y.year !== "" && Number(y.waste_t) >= 0)
+          .map((y) => ({
+            year: Number(y.year),
+            waste_t: Number(y.waste_t) || 0,
+            quality: y.quality,
+            ch4_recovered_t: y.ch4_recovered_t ? Number(y.ch4_recovered_t) : undefined,
+          })),
+        biogas_flared: biogasFlared,
+      } as const;
+    }
     if (method === "composting") {
       return {
         source_category: "solid_waste",
@@ -80,12 +115,15 @@ export function SolidWasteSource({ inventoryId, ctx, entries, reload, readOnly }
     } as const;
   }
 
+  const landfillCompSum = ctx.landfill.reduce((s, f) => s + (Number(landfillComp[f.category]) || 0), 0);
   const canPreview =
-    method === "composting"
-      ? Number(massT) > 0
-      : method === "incineration"
-        ? Number(incineratedT) > 0
-        : Boolean(co2 || ch4 || n2o);
+    method === "landfill"
+      ? landfillYears.some((y) => Number(y.waste_t) > 0) && landfillCompSum > 0
+      : method === "composting"
+        ? Number(massT) > 0
+        : method === "incineration"
+          ? Number(incineratedT) > 0
+          : Boolean(co2 || ch4 || n2o);
   const preview = canPreview ? calculate(buildData(), ctx) : null;
 
   async function handleSubmit(event: FormEvent) {
@@ -105,6 +143,8 @@ export function SolidWasteSource({ inventoryId, ctx, entries, reload, readOnly }
     if (err) {
       setError(err);
     } else {
+      setLandfillComp({});
+      setLandfillYears([{ year: String(inventoryYear), waste_t: "", quality: "A", ch4_recovered_t: "" }]);
       setMassT("");
       setEfCh4Kg("");
       setEfN2oKg("");
@@ -129,9 +169,9 @@ export function SolidWasteSource({ inventoryId, ctx, entries, reload, readOnly }
     <section>
       <h2>Resíduos sólidos</h2>
       <p>
-        Emissões do tratamento de resíduos sólidos (Escopo 1): compostagem, incineração e relato
-        direto. O aterro (modelo FOD) entra numa fase seguinte — até lá, use o relato direto para as
-        emissões de aterro calculadas em outra ferramenta.
+        Emissões do tratamento de resíduos sólidos (Escopo 1): aterro, compostagem, incineração e
+        relato direto. O aterro usa o modelo FOD do IPCC — o CH₄ do ano inventariado vem da
+        decomposição de tudo que foi aterrado nos anos anteriores.
       </p>
 
       {!readOnly && (
@@ -150,6 +190,103 @@ export function SolidWasteSource({ inventoryId, ctx, entries, reload, readOnly }
               </option>
             ))}
           </select>
+
+          {method === "landfill" && (
+            <>
+              <p style={{ fontSize: "0.8rem", color: "var(--sc-muted)", margin: "0.75rem 0 0.25rem" }}>
+                O resíduo aterrado gera CH₄ por décadas, então a emissão de {inventoryYear} depende da
+                série histórica de deposição. Informe um ano por linha (o ideal é cobrir os últimos 30
+                anos); anos sem linha contam como deposição zero.
+              </p>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ano</th>
+                    <th>Resíduo aterrado (t)</th>
+                    <th>Qualidade do local</th>
+                    <th>CH₄ recuperado (t)</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {landfillYears.map((row, i) => (
+                    <tr key={i}>
+                      <td>
+                        <input
+                          type="number" step="1" value={row.year}
+                          onChange={(e) => setLandfillYears((rs) => rs.map((r, j) => (j === i ? { ...r, year: e.target.value } : r)))}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number" step="0.01" min="0" value={row.waste_t}
+                          onChange={(e) => setLandfillYears((rs) => rs.map((r, j) => (j === i ? { ...r, waste_t: e.target.value } : r)))}
+                        />
+                      </td>
+                      <td>
+                        <select
+                          value={row.quality}
+                          onChange={(e) => setLandfillYears((rs) => rs.map((r, j) => (j === i ? { ...r, quality: e.target.value } : r)))}
+                        >
+                          {LANDFILL_QUALITIES.map((q) => (
+                            <option key={q.key} value={q.key}>{q.label}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <input
+                          type="number" step="0.0001" min="0" value={row.ch4_recovered_t}
+                          onChange={(e) => setLandfillYears((rs) => rs.map((r, j) => (j === i ? { ...r, ch4_recovered_t: e.target.value } : r)))}
+                        />
+                      </td>
+                      <td className="row-actions">
+                        <button
+                          type="button" className="btn-icon-danger"
+                          onClick={() => setLandfillYears((rs) => (rs.length > 1 ? rs.filter((_, j) => j !== i) : rs))}
+                        >
+                          Remover
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setLandfillYears((rs) => {
+                    const last = Number(rs[rs.length - 1]?.year) || inventoryYear;
+                    return [...rs, { year: String(last - 1), waste_t: "", quality: rs[rs.length - 1]?.quality ?? "A", ch4_recovered_t: "" }];
+                  })
+                }
+              >
+                + Adicionar ano
+              </button>
+
+              <p style={{ fontSize: "0.8rem", color: "var(--sc-muted)", margin: "1rem 0 0.25rem" }}>
+                Composição do resíduo aterrado (% de cada categoria), aplicada a toda a série. Soma
+                atual: {fmt(landfillCompSum, 1)}%.
+              </p>
+              {ctx.landfill.map((f) => (
+                <div key={f.category}>
+                  <label htmlFor={`sw-lf-${f.position}`}>{f.category} (%)</label>
+                  <input
+                    id={`sw-lf-${f.position}`}
+                    type="number" step="0.1" min="0" max="100"
+                    value={landfillComp[f.category] ?? ""}
+                    onChange={(e) => setLandfillComp((c) => ({ ...c, [f.category]: e.target.value }))}
+                  />
+                </div>
+              ))}
+
+              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.75rem" }}>
+                <input type="checkbox" checked={biogasFlared} onChange={(e) => setBiogasFlared(e.target.checked)} style={{ width: "auto" }} />
+                Biogás recuperado é queimado em flare (gera CO₂ biogênico)
+              </label>
+            </>
+          )}
 
           {method === "composting" && (
             <>

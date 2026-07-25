@@ -618,6 +618,20 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["ghg_fleet_factors"]["Row"]>;
         Relationships: [];
       };
+      ghg_landfill_factors: {
+        Row: {
+          id: string;
+          position: number;
+          category: string;
+          doc: number;
+          docf: number;
+          k: number;
+          source: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ghg_landfill_factors"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["ghg_landfill_factors"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: {
       production_period_summary: {

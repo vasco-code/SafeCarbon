@@ -224,7 +224,7 @@ export function PegadaInventarioPage() {
             descriptionFieldLabel="Descrição da atividade"
           />
         )}
-        {active === "solid_waste" && <SolidWasteSource {...commonProps} entries={entriesOf("solid_waste")} />}
+        {active === "solid_waste" && <SolidWasteSource {...commonProps} entries={entriesOf("solid_waste")} inventoryYear={header.inventory_year} />}
         {active === "fuel_energy_upstream" && <FuelEnergyUpstreamSource {...commonProps} entries={entriesOf("fuel_energy_upstream")} />}
         {SCOPE3_GAS_ENTRY_CATEGORIES.includes(active as Scope3GasEntryCategory) && (
           <DirectGasEmissionSource

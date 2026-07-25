@@ -1,6 +1,6 @@
 import type { ActivityData, CalcResult, Computed, Scope3GasEntryCategory, SourceCategory } from "./types";
 import { SCOPE3_GAS_ENTRY_CATEGORIES } from "./types";
-import { effluentKey, genericKey, getFleet, getGrid, type FactorContext } from "./factors";
+import { effluentKey, genericKey, getFleet, getGrid, mcfOf, type FactorContext } from "./factors";
 
 // Motor de cálculo determinístico, por source_category. Cada função recebe o
 // activity_data cru + o contexto de fatores indexado e devolve o `computed`
@@ -181,8 +181,68 @@ const COMPOST_EF_N2O_G_KG = 0.24; // gN2O/kg de resíduo
 const INCIN_EF_CH4_G_T = 0; // gCH4/t (base úmida)
 const INCIN_EF_N2O_G_T = 100; // gN2O/t (base úmida)
 
+// Constantes do modelo FOD (aba "Resíduos sólidos"): F = fração de CH4 no gás
+// gerado; 16/12 = razão molar C→CH4; OX = fator de oxidação na cobertura,
+// que a planilha aplica como 0,1 quando MCF ≥ 0,8 e 0 caso contrário.
+const FOD_F = 0.5;
+const FOD_C_TO_CH4 = 16 / 12;
+function oxOf(mcf: number): number {
+  return mcf >= 0.8 ? 0.1 : 0;
+}
+
 function calcSolidWaste(data: ActivityData, ctx: FactorContext): CalcResult {
   if (data.source_category !== "solid_waste") return { ok: false, missingFactor: "tipo" };
+
+  if (data.method === "landfill") {
+    if (ctx.landfill.length === 0) return { ok: false, missingFactor: "fatores de aterro" };
+    const years = (data.years ?? []).filter((y) => Number.isFinite(y.year)).sort((a, b) => a.year - b.year);
+    if (years.length === 0) return { ok: false, missingFactor: "série de deposição do aterro" };
+    const invYear = data.inventory_year ?? years[years.length - 1].year;
+    const comp = data.landfill_composition ?? {};
+
+    // Recursão do IPCC, por categoria de resíduo (cada uma com seu k):
+    //   DDOCma_T  = DDOCmd_T + DDOCma_{T-1} × e^(-k)
+    //   DDOCdec_T = DDOCma_{T-1} × (1 − e^(-k))
+    // Percorre a série do ano mais antigo até o ano inventariado, acumulando.
+    let ch4Generated = 0;
+    const ddocma = new Map<string, number>(ctx.landfill.map((f) => [f.category, 0]));
+    const firstYear = years[0].year;
+    const byYear = new Map(years.map((y) => [y.year, y]));
+
+    for (let year = firstYear; year <= invYear; year++) {
+      const row = byYear.get(year);
+      const mcf = row ? mcfOf(row.quality) : 0;
+      let decompTotal = 0;
+      for (const f of ctx.landfill) {
+        const prev = ddocma.get(f.category) ?? 0;
+        const decayed = Math.exp(-f.k);
+        const decomp = prev * (1 - decayed);
+        const frac = (comp[f.category] ?? 0) / 100;
+        const deposited = row ? row.waste_t * frac * f.doc * f.docf * mcf : 0;
+        ddocma.set(f.category, deposited + prev * decayed);
+        decompTotal += decomp;
+      }
+      if (year === invYear) ch4Generated = decompTotal * FOD_F * FOD_C_TO_CH4;
+    }
+
+    const invRow = byYear.get(invYear);
+    const recovered = invRow?.ch4_recovered_t ?? 0;
+    const ox = oxOf(invRow ? mcfOf(invRow.quality) : 0);
+    const ch4 = Math.max(0, (ch4Generated - recovered) * (1 - ox));
+    const biogenic = data.biogas_flared ? recovered * (44 / 16) : 0;
+    return {
+      ok: true,
+      computed: {
+        co2_t: 0,
+        ch4_t: ch4,
+        n2o_t: 0,
+        biogenic_co2_t: biogenic,
+        co2e_t: ch4 * gwpOf(ctx, "CH4"),
+        factor_refs: [`landfill:fod:${firstYear}-${invYear}`],
+        ar_version: ctx.arVersion,
+      },
+    };
+  }
 
   if (data.method === "direct") {
     const co2 = data.co2_t ?? 0;

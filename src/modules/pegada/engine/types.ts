@@ -237,10 +237,27 @@ export interface EffluentData {
 //      CH4/N2O do processo por FE (g/t): defaults 0 e 100. CO2 fóssil entra no
 //      escopo; biogênico à parte.
 //  - "direct": relato de CO2/CH4/N2O (Tabela 4 da aba).
-export type SolidWasteMethod = "composting" | "incineration" | "direct";
+export type SolidWasteMethod = "landfill" | "composting" | "incineration" | "direct";
+
+// Uma linha da série histórica de deposição no aterro. `quality` é a chave
+// A-H da classificação do local (ver LANDFILL_QUALITIES) — pode variar ano a
+// ano, como na planilha.
+export interface LandfillYear {
+  year: number;
+  waste_t: number;
+  quality: string;
+  ch4_recovered_t?: number;
+}
 
 export interface SolidWasteData {
   method: SolidWasteMethod;
+  // landfill (modelo FOD) — a emissão do ano inventariado depende da série
+  // histórica de deposição, não só do ano corrente. `composition` é única para
+  // toda a série (a planilha admite composição ano a ano; aqui é uma
+  // simplificação deliberada de UI — o resto da matemática é idêntico).
+  inventory_year?: number;
+  landfill_composition?: Record<string, number>; // categoria aterrada → % (0-100)
+  years?: LandfillYear[];
   // composting
   mass_t?: number;
   ef_ch4_g_kg?: number; // override; default 4
