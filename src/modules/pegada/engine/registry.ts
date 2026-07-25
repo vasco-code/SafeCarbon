@@ -1,4 +1,5 @@
-import type { ActivityData, CalcResult, Computed, SourceCategory } from "./types";
+import type { ActivityData, CalcResult, Computed, Scope3GasEntryCategory, SourceCategory } from "./types";
+import { SCOPE3_GAS_ENTRY_CATEGORIES } from "./types";
 import { effluentKey, genericKey, getFleet, getGrid, type FactorContext } from "./factors";
 
 // Motor de cálculo determinístico, por source_category. Cada função recebe o
@@ -28,26 +29,21 @@ function gasMassBuckets(gas: string, mass_t: number): Pick<Computed, "co2_t" | "
   };
 }
 
-// Processos industriais e Agricultura compartilham a mesma matemática: uma
-// linha = massa de UM gás relatada direto (não há fator de atividade),
-// convertida a CO2e só pelo GWP do próprio gás — mais emissão/remoção de CO2
-// biogênico digitadas à parte (não fazem parte do CO2e do escopo).
+// Modelo de entrada direta por gás: uma linha = massa de UM gás relatada
+// direto (não há fator de atividade), convertida a CO2e só pelo GWP do próprio
+// gás — mais emissão/remoção de CO2 biogênico digitadas à parte (não fazem
+// parte do CO2e do escopo). Usado por Processos industriais e Agricultura
+// (Escopo 1) e pelas 12 categorias de Escopo 3 sem cálculo próprio, que é
+// exatamente o modelo da aba "Categorias de Escopo 3" da planilha.
 function calcDirectGasEmission(data: ActivityData, ctx: FactorContext): CalcResult {
-  if (data.source_category !== "industrial_processes" && data.source_category !== "agriculture") {
+  if (!("gas" in data) || !("emitted_t" in data)) {
     return { ok: false, missingFactor: "tipo" };
   }
   const gwp = ctx.gwp.get(data.gas);
   if (gwp == null) return { ok: false, missingFactor: `GWP para o gás ${data.gas}` };
 
-  const isCo2 = data.gas === "CO2";
-  const isCh4 = data.gas === "CH4";
-  const isN2o = data.gas === "N2O";
-
   const computed: Computed = {
-    co2_t: isCo2 ? data.emitted_t : 0,
-    ch4_t: isCh4 ? data.emitted_t : 0,
-    n2o_t: isN2o ? data.emitted_t : 0,
-    other_gases_t: !isCo2 && !isCh4 && !isN2o ? { [data.gas]: data.emitted_t } : undefined,
+    ...gasMassBuckets(data.gas, data.emitted_t),
     biogenic_co2_t: data.biogenic_co2_emissions_t ?? 0,
     biogenic_co2_removals_t: data.biogenic_co2_removals_t ?? 0,
     co2e_t: data.emitted_t * gwp,
@@ -414,6 +410,12 @@ const calculators: Record<SourceCategory, Calculator> = {
   effluents: calcEffluent,
   solid_waste: calcSolidWaste,
   fuel_energy_upstream: calcFuelEnergyUpstream,
+  // Escopo 3 — as 12 categorias sem cálculo próprio usam o modelo de entrada
+  // direta por gás da aba "Categorias de Escopo 3".
+  ...(Object.fromEntries(SCOPE3_GAS_ENTRY_CATEGORIES.map((c) => [c, calcDirectGasEmission])) as Record<
+    Scope3GasEntryCategory,
+    Calculator
+  >),
 };
 
 export function calculate(data: ActivityData, ctx: FactorContext): CalcResult {

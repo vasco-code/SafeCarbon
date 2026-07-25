@@ -22,7 +22,41 @@ export type SourceCategory =
   | "agriculture"
   | "effluents"
   | "solid_waste"
-  | "fuel_energy_upstream";
+  // Escopo 3 — as 15 categorias do GHG Protocol. Cat. 3/6/7 têm cálculo
+  // próprio (fator de atividade); as demais seguem o modelo da aba
+  // "Categorias de Escopo 3": massa do gás relatada direto × GWP.
+  | "purchased_goods"
+  | "capital_goods"
+  | "fuel_energy_upstream"
+  | "transport_distribution_upstream"
+  | "waste_generated_operations"
+  | "leased_assets_upstream"
+  | "transport_distribution_downstream"
+  | "processing_sold_products"
+  | "use_sold_products"
+  | "end_of_life_sold_products"
+  | "leased_assets_downstream"
+  | "franchises"
+  | "investments";
+
+// Categorias de Escopo 3 que usam o modelo genérico de entrada por gás
+// (DirectGasEmissionData) — as 12 sem cálculo próprio no app.
+export const SCOPE3_GAS_ENTRY_CATEGORIES = [
+  "purchased_goods",
+  "capital_goods",
+  "transport_distribution_upstream",
+  "waste_generated_operations",
+  "leased_assets_upstream",
+  "transport_distribution_downstream",
+  "processing_sold_products",
+  "use_sold_products",
+  "end_of_life_sold_products",
+  "leased_assets_downstream",
+  "franchises",
+  "investments",
+] as const;
+
+export type Scope3GasEntryCategory = (typeof SCOPE3_GAS_ENTRY_CATEGORIES)[number];
 
 export const SCOPE_OF_SOURCE: Record<SourceCategory, Scope> = {
   stationary_combustion: 1,
@@ -36,7 +70,19 @@ export const SCOPE_OF_SOURCE: Record<SourceCategory, Scope> = {
   agriculture: 1,
   effluents: 1,
   solid_waste: 1,
+  purchased_goods: 3,
+  capital_goods: 3,
   fuel_energy_upstream: 3,
+  transport_distribution_upstream: 3,
+  waste_generated_operations: 3,
+  leased_assets_upstream: 3,
+  transport_distribution_downstream: 3,
+  processing_sold_products: 3,
+  use_sold_products: 3,
+  end_of_life_sold_products: 3,
+  leased_assets_downstream: 3,
+  franchises: 3,
+  investments: 3,
 };
 
 // Setor de atividade — os fatores de CH4/N2O da combustão variam por setor
@@ -234,7 +280,8 @@ export type ActivityData =
   | ({ source_category: "agriculture" } & DirectGasEmissionData)
   | ({ source_category: "effluents" } & EffluentData)
   | ({ source_category: "solid_waste" } & SolidWasteData)
-  | ({ source_category: "fuel_energy_upstream" } & FuelEnergyUpstreamData);
+  | ({ source_category: "fuel_energy_upstream" } & FuelEnergyUpstreamData)
+  | ({ source_category: Scope3GasEntryCategory } & DirectGasEmissionData);
 
 // ---- computed (saída do cálculo, gravada junto no banco) ----
 

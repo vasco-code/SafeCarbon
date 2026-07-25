@@ -1,12 +1,14 @@
 import { useState, type FormEvent } from "react";
 import { GAS_LABELS } from "../engine/gwp";
 import { calculate } from "../engine/registry";
+import type { Scope3GasEntryCategory } from "../engine/types";
 import { addEntry } from "../entryActions";
 import { EntryTable, fmt, type SourceProps } from "./common";
 
-// Componente compartilhado por Processos industriais e Agricultura — mesma
-// planilha, mesma matemática (massa do gás relatada direto × GWP), só muda
-// rótulo/categoria. Ver calcDirectGasEmission no registry.
+// Componente compartilhado por todas as fontes que usam entrada direta por gás
+// (massa do gás × GWP): Processos industriais e Agricultura no Escopo 1, e as
+// 12 categorias de Escopo 3 sem cálculo próprio — que é exatamente o modelo da
+// aba "Categorias de Escopo 3" da planilha. Ver calcDirectGasEmission.
 export function DirectGasEmissionSource({
   category,
   title,
@@ -20,7 +22,7 @@ export function DirectGasEmissionSource({
   reload,
   readOnly,
 }: SourceProps & {
-  category: "industrial_processes" | "agriculture";
+  category: "industrial_processes" | "agriculture" | Scope3GasEntryCategory;
   title: string;
   description: string;
   sourceRefLabel: string;

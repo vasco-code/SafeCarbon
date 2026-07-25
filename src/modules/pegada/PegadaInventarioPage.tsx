@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Leaf, Factory, Fuel, Zap, Plug, Plane, Bus, Lock, FlaskConical, Wheat, Droplets, Wind, Waves, Trash2 } from "lucide-react";
+import {
+  ArrowLeft, Leaf, Factory, Fuel, Zap, Plug, Plane, Bus, Lock, FlaskConical, Wheat, Droplets,
+  Wind, Waves, Trash2, Package, Building2, Truck, Recycle, Warehouse, Cog, ShoppingCart, Store,
+  TrendingUp, PackageOpen,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { loadFactorContext, type FactorContext } from "./engine/factors";
 import { aggregate, type InventoryEntry } from "./engine/aggregate";
-import type { SourceCategory } from "./engine/types";
+import type { Scope3GasEntryCategory, SourceCategory } from "./engine/types";
+import { SCOPE3_GAS_ENTRY_CATEGORIES } from "./engine/types";
 import { SOURCES, SCOPE_LABELS } from "./sources";
 import type { Entry } from "./entryActions";
 import { StationaryCombustionSource } from "./sources/StationaryCombustionSource";
@@ -16,6 +21,7 @@ import { CommutingSource } from "./sources/CommutingSource";
 import { IndustrialProcessesSource } from "./sources/IndustrialProcessesSource";
 import { AgricultureSource } from "./sources/AgricultureSource";
 import { FugitiveSource } from "./sources/FugitiveSource";
+import { DirectGasEmissionSource } from "./sources/DirectGasEmissionSource";
 import { EffluentSource } from "./sources/EffluentSource";
 import { SolidWasteSource } from "./sources/SolidWasteSource";
 import { FuelEnergyUpstreamSource } from "./sources/FuelEnergyUpstreamSource";
@@ -40,7 +46,19 @@ const SOURCE_ICONS: Record<string, typeof Factory> = {
   agriculture: Wheat,
   effluents: Waves,
   solid_waste: Trash2,
+  purchased_goods: Package,
+  capital_goods: Building2,
   fuel_energy_upstream: Droplets,
+  transport_distribution_upstream: Truck,
+  waste_generated_operations: Recycle,
+  leased_assets_upstream: Warehouse,
+  transport_distribution_downstream: Truck,
+  processing_sold_products: Cog,
+  use_sold_products: ShoppingCart,
+  end_of_life_sold_products: PackageOpen,
+  leased_assets_downstream: Warehouse,
+  franchises: Store,
+  investments: TrendingUp,
 };
 
 function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -185,6 +203,19 @@ export function PegadaInventarioPage() {
         {active === "effluents" && <EffluentSource {...commonProps} entries={entriesOf("effluents")} />}
         {active === "solid_waste" && <SolidWasteSource {...commonProps} entries={entriesOf("solid_waste")} />}
         {active === "fuel_energy_upstream" && <FuelEnergyUpstreamSource {...commonProps} entries={entriesOf("fuel_energy_upstream")} />}
+        {SCOPE3_GAS_ENTRY_CATEGORIES.includes(active as Scope3GasEntryCategory) && (
+          <DirectGasEmissionSource
+            {...commonProps}
+            key={active}
+            category={active as Scope3GasEntryCategory}
+            entries={entriesOf(active)}
+            title={SOURCES.find((s) => s.category === active)?.label ?? "Escopo 3"}
+            description="Relate a massa emitida de cada gás desta categoria (a planilha usa o mesmo modelo na aba “Categorias de Escopo 3”). O CO₂e é calculado pelo GWP do próprio gás."
+            sourceRefLabel="Registro da fonte"
+            sourceRefPlaceholder="ex.: Fornecedor A"
+            descriptionFieldLabel="Descrição"
+          />
+        )}
       </div>
     </section>
   );
