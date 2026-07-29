@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { FileDropzone } from "@/components/FileDropzone";
 
-type DocType = "metodologia" | "dcp" | "resumo_calculo" | "auditoria_aprovacao" | "plano_melhorias" | "checklist" | "foto" | "outro";
+type DocType = "metodologia" | "dcp" | "resumo_calculo" | "monitoramento" | "auditoria_aprovacao" | "plano_melhorias" | "checklist" | "outro";
 
 interface ProjectDocument {
   id: string;
@@ -21,14 +21,14 @@ const DOC_TYPE_LABELS: Record<DocType, string> = {
   metodologia: "Metodologia",
   dcp: "DCP",
   resumo_calculo: "Resumo de Cálculo",
+  monitoramento: "Monitoramento de Resultados",
   auditoria_aprovacao: "Aprovação de Auditoria",
   plano_melhorias: "Plano de Melhorias",
   checklist: "Checklist",
-  foto: "Foto",
   outro: "Outro",
 };
 
-const DOC_TYPE_ORDER: DocType[] = ["metodologia", "dcp", "resumo_calculo", "checklist", "auditoria_aprovacao", "plano_melhorias", "foto", "outro"];
+const DOC_TYPE_ORDER: DocType[] = ["metodologia", "dcp", "resumo_calculo", "monitoramento", "checklist", "auditoria_aprovacao", "plano_melhorias", "outro"];
 
 export function DocumentosPage() {
   const { projectId } = useParams<{ projectId: string }>();

@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { FileDropzone } from "@/components/FileDropzone";
 
 interface ProjectRow {
   id: string;
@@ -138,17 +139,19 @@ function OrgPicker({
 
 export function ProjetosListPage() {
   const navigate = useNavigate();
-  const { canAdminister } = useAuth();
+  const { canAdminister, user } = useAuth();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [orgs, setOrgs] = useState<OrgOption[]>([]);
   const [methodologyVersions, setMethodologyVersions] = useState<MethodologyVersionOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [proponentOrgId, setProponentOrgId] = useState("");
   const [developerOrgId, setDeveloperOrgId] = useState("");
   const [methodologyVersionId, setMethodologyVersionId] = useState("");
   const [registryStandard, setRegistryStandard] = useState<RegistryStandard>("none_yet");
+  const [photos, setPhotos] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -191,6 +194,7 @@ export function ProjetosListPage() {
       .from("carbon_projects")
       .insert({
         name,
+        description: description.trim() || null,
         proponent_org_id: proponentOrgId,
         developer_org_id: developerOrgId,
         methodology_version_id: methodologyVersionId || null,
@@ -211,15 +215,35 @@ export function ProjetosListPage() {
     }
     const { error: rolesError } = await supabase.from("project_roles").insert(roleRows);
 
+    for (const file of photos) {
+      const path = `${project.id}/foto/${Date.now()}-${file.name}`;
+      const { error: uploadError } = await supabase.storage.from("project-documents").upload(path, file);
+      if (uploadError) {
+        setError(`Projeto criado, mas houve um erro ao enviar uma foto: ${uploadError.message}`);
+        continue;
+      }
+      await supabase.from("project_documents").insert({
+        project_id: project.id,
+        doc_type: "foto",
+        title: file.name,
+        file_url: path,
+        storage_path: path,
+        uploaded_by: user?.id,
+        uploaded_by_org_id: proponentOrgId,
+      });
+    }
+
     setSubmitting(false);
     if (rolesError) {
       setError(`Projeto criado, mas houve um erro ao atribuir papéis: ${rolesError.message}`);
     } else {
       setName("");
+      setDescription("");
       setProponentOrgId("");
       setDeveloperOrgId("");
       setMethodologyVersionId("");
       setRegistryStandard("none_yet");
+      setPhotos([]);
       setShowForm(false);
     }
     loadData();
@@ -240,6 +264,15 @@ export function ProjetosListPage() {
         <form onSubmit={handleCreateProject}>
           <label htmlFor="project-name">Nome do projeto</label>
           <input id="project-name" type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+
+          <label htmlFor="project-description">Mini-descrição do projeto</label>
+          <textarea
+            id="project-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            placeholder="Resumo curto do projeto — o que ele faz e qual o produto/atividade."
+          />
 
           <OrgPicker
             label="Organização proponente"
@@ -282,6 +315,32 @@ export function ProjetosListPage() {
               </option>
             ))}
           </select>
+
+          <label>Fotos do projeto (opcional)</label>
+          <FileDropzone
+            multiple
+            accept="image/*"
+            onFiles={(files) => setPhotos((prev) => [...prev, ...files])}
+            disabled={submitting}
+            label="Arraste fotos aqui ou clique para escolher"
+            hint="Imagens do projeto/atividade — exibidas na carteira de créditos."
+          />
+          {photos.length > 0 && (
+            <ul style={{ listStyle: "none", padding: 0, display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+              {photos.map((file, index) => (
+                <li key={`${file.name}-${index}`} className="badge badge-neutral" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  {file.name}
+                  <button
+                    type="button"
+                    className="btn-icon-danger"
+                    onClick={() => setPhotos((prev) => prev.filter((_, i) => i !== index))}
+                  >
+                    Remover
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
 
           {error && <p className="auth-error">{error}</p>}
 
