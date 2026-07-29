@@ -80,8 +80,15 @@ export function PegadaInventarioPage() {
   const [header, setHeader] = useState<InventoryHeader | null>(null);
   const [ctx, setCtx] = useState<FactorContext | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [activeScope, setActiveScope] = useState<1 | 2 | 3>(1);
   const [active, setActive] = useState<SourceCategory>("stationary_combustion");
   const [loading, setLoading] = useState(true);
+
+  function selectScope(scope: 1 | 2 | 3) {
+    setActiveScope(scope);
+    const firstOfScope = SOURCES.find((s) => s.scope === scope);
+    if (firstOfScope) setActive(firstOfScope.category as SourceCategory);
+  }
 
   async function loadEntries() {
     if (!inventoryId) return;
@@ -172,34 +179,40 @@ export function PegadaInventarioPage() {
         />
       )}
 
-      {[1, 2, 3].map((scope) => (
-        <div key={scope} style={{ marginBottom: "0.5rem" }}>
-          <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--sc-muted)", margin: "0.5rem 0 0.25rem" }}>
-            {SCOPE_LABELS[scope as 1 | 2 | 3]}
-          </p>
-          <nav className="project-tabs" aria-label={`Fontes do escopo ${scope}`}>
-            {SOURCES.filter((s) => s.scope === scope).map((s) => {
-              const Icon = SOURCE_ICONS[s.category] ?? Factory;
-              const count = s.implemented ? entriesOf(s.category as SourceCategory).length : 0;
-              return (
-                <button
-                  key={s.category}
-                  type="button"
-                  disabled={!s.implemented}
-                  onClick={() => s.implemented && setActive(s.category as SourceCategory)}
-                  className={`project-tab${active === s.category ? " active" : ""}`}
-                  style={!s.implemented ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
-                  title={s.implemented ? undefined : "Em breve"}
-                >
-                  {s.implemented ? <Icon size={15} /> : <Lock size={13} />}
-                  {s.label}
-                  {count > 0 ? ` (${count})` : ""}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      ))}
+      <nav className="project-tabs" aria-label="Escopo" style={{ marginBottom: "0.75rem" }}>
+        {([1, 2, 3] as const).map((scope) => (
+          <button
+            key={scope}
+            type="button"
+            onClick={() => selectScope(scope)}
+            className={`project-tab${activeScope === scope ? " active" : ""}`}
+          >
+            {SCOPE_LABELS[scope]}
+          </button>
+        ))}
+      </nav>
+
+      <nav className="project-tabs" aria-label={`Fontes do escopo ${activeScope}`} style={{ marginBottom: "0.5rem" }}>
+        {SOURCES.filter((s) => s.scope === activeScope).map((s) => {
+          const Icon = SOURCE_ICONS[s.category] ?? Factory;
+          const count = s.implemented ? entriesOf(s.category as SourceCategory).length : 0;
+          return (
+            <button
+              key={s.category}
+              type="button"
+              disabled={!s.implemented}
+              onClick={() => s.implemented && setActive(s.category as SourceCategory)}
+              className={`project-tab${active === s.category ? " active" : ""}`}
+              style={!s.implemented ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+              title={s.implemented ? undefined : "Em breve"}
+            >
+              {s.implemented ? <Icon size={15} /> : <Lock size={13} />}
+              {s.label}
+              {count > 0 ? ` (${count})` : ""}
+            </button>
+          );
+        })}
+      </nav>
 
       <div className="project-tab-content">
         {active === "stationary_combustion" && <StationaryCombustionSource {...commonProps} entries={entriesOf("stationary_combustion")} />}
