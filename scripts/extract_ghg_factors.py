@@ -101,6 +101,71 @@ def print_thermal_seed(fe):
         )
 
 
+LULUCF_CATEGORIES = [
+    (2, "Cultura anual"),
+    (3, "Cultura de cana"),
+    (4, "Cultura perene"),
+    (5, "Pastagem"),
+    (6, "Silvicultura"),
+    (7, "Vegetação natural, não especificada"),
+    (9, "Vegetação natural, Floresta"),
+    (10, "Vegetação natural, pastagem"),
+]  # (offset de coluna a partir de CZ/coluna 104, nome) — DH (offset 8) é vazia, pulada.
+
+
+def extract_lulucf_state_factors(listas):
+    """Tabela SOCref/FLU/FMG/FI/Cveg por estado × categoria de uso do solo
+    (Listas!CZ317:DJ559, fonte BRLUC v1.3) — usada pelo método detalhado de
+    Mudança no uso do solo (Tabela 1). Estrutura regular: cada estado ocupa 9
+    linhas (cabeçalho + SOCref/FLU/FMG/FI/SOC/Cveg/Stock + branco); SOC e
+    Stock são derivados (SOC=SOCref*FLU*FMG*FI, Stock=SOC+Cveg) — o motor
+    recalcula, não precisa gravar."""
+    import re
+    rows = []
+    for r in range(315, 560):
+        header = listas.cell(row=r, column=105).value  # DA
+        if not header or not re.match(r"^\d+\s*-\s*", str(header)):
+            continue
+        state_name = str(header).split("-", 1)[1].strip()
+        uf = listas.cell(row=r + 1, column=104).value  # CZ, linha do SOCref
+        if not uf:
+            continue
+        for col_offset, category in LULUCF_CATEGORIES:
+            col = 104 + col_offset
+            socref = listas.cell(row=r + 1, column=col).value
+            flu = listas.cell(row=r + 2, column=col).value
+            fmg = listas.cell(row=r + 3, column=col).value
+            fi = listas.cell(row=r + 4, column=col).value
+            cveg = listas.cell(row=r + 6, column=col).value
+            if socref is None:
+                continue
+            rows.append({
+                "uf": str(uf).strip(),
+                "state_name": state_name,
+                "category": category,
+                "socref": socref,
+                "flu": flu if flu is not None else 1,
+                "fmg": fmg if fmg is not None else 1,
+                "fi": fi if fi is not None else 1,
+                "cveg": cveg if cveg is not None else 0,
+            })
+    return rows
+
+
+def print_lulucf_seed(listas):
+    rows = extract_lulucf_state_factors(listas)
+    states = {r["uf"] for r in rows}
+    print("-- Seed de ghg_lulucf_state_factors — gerado por scripts/extract_ghg_factors.py --lulucf")
+    print(f"-- {len(states)} estados, {len(rows)} linhas (estado x categoria de uso do solo)\n")
+    print("delete from ghg_lulucf_state_factors;\n")
+    for r in rows:
+        print(
+            "insert into ghg_lulucf_state_factors (uf, state_name, land_use_category, socref, flu, fmg, fi, cveg, source) values ("
+            f"{sqlstr(r['uf'])}, {sqlstr(r['state_name'])}, {sqlstr(r['category'])}, {num(r['socref'])}, "
+            f"{num(r['flu'])}, {num(r['fmg'])}, {num(r['fi'])}, {num(r['cveg'])}, 'BRLUC v1.3 via GHG Protocol FGV v2026.0.1');"
+        )
+
+
 def print_effluent_nitrogen_seed(listas):
     """Seed de ghg_effluent_nitrogen_defaults — default de N (kgN/m3) por
     origem industrial de efluente, named range efu_tipo_de_eflu (Listas!CA39:CB46).
@@ -433,6 +498,10 @@ def main():
 
     if "--effluent-n" in flags:
         print_effluent_nitrogen_seed(wb["Listas"])
+        return
+
+    if "--lulucf" in flags:
+        print_lulucf_seed(wb["Listas"])
         return
 
     fuels = extract_fuels(fe)

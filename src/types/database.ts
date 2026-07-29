@@ -657,6 +657,23 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["ghg_gas_blends"]["Row"]>;
         Relationships: [];
       };
+      ghg_lulucf_state_factors: {
+        Row: {
+          id: string;
+          uf: string;
+          state_name: string;
+          land_use_category: string;
+          socref: number;
+          flu: number;
+          fmg: number;
+          fi: number;
+          cveg: number;
+          source: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ghg_lulucf_state_factors"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["ghg_lulucf_state_factors"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: {
       production_period_summary: {

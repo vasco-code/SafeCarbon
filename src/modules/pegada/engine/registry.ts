@@ -2,7 +2,7 @@ import type {
   ActivityData, CalcResult, Computed, EffluentStage, Scope3GasEntryCategory, SourceCategory,
 } from "./types";
 import { SCOPE3_GAS_ENTRY_CATEGORIES } from "./types";
-import { effluentKey, genericKey, getFleet, getGrid, mcfOf, type FactorContext } from "./factors";
+import { effluentKey, genericKey, getFleet, getGrid, lulucfKey, mcfOf, type FactorContext } from "./factors";
 
 // Motor de cálculo determinístico, por source_category. Cada função recebe o
 // activity_data cru + o contexto de fatores indexado e devolve o `computed`
@@ -38,7 +38,12 @@ function gasMassBuckets(gas: string, mass_t: number): Pick<Computed, "co2_t" | "
 // (Escopo 1) e pelas 12 categorias de Escopo 3 sem cálculo próprio, que é
 // exatamente o modelo da aba "Categorias de Escopo 3" da planilha.
 function calcDirectGasEmission(data: ActivityData, ctx: FactorContext): CalcResult {
-  if (!("gas" in data) || !("emitted_t" in data)) {
+  if (
+    !("gas" in data) ||
+    !("emitted_t" in data) ||
+    typeof data.gas !== "string" ||
+    typeof data.emitted_t !== "number"
+  ) {
     return { ok: false, missingFactor: "tipo" };
   }
   const gwp = ctx.gwp.get(data.gas);
@@ -399,6 +404,66 @@ function calcSolidWaste(data: ActivityData, ctx: FactorContext): CalcResult {
   };
 }
 
+// Mudança no uso do solo (Escopo 1). "direct" (default, retrocompatível com
+// lançamentos sem `method`) segue calcDirectGasEmission. "detailed" é a
+// Tabela 1: diferença de estoque de carbono entre uso anterior e posterior
+// do solo, por estado (ghg_lulucf_state_factors). Ver LandUseData em
+// types.ts para a metodologia e as simplificações da Fase A.
+function calcLandUseDetailed(data: ActivityData, ctx: FactorContext): CalcResult {
+  if (data.source_category !== "land_use") return { ok: false, missingFactor: "tipo" };
+  if (!data.uf || !data.area_ha || !data.previous_use || !data.next_use) {
+    return { ok: false, missingFactor: "dados de mudança no uso do solo" };
+  }
+  const prev = ctx.lulucfStates.get(lulucfKey(data.uf, data.previous_use));
+  if (!prev) return { ok: false, missingFactor: `fator MUS ${data.uf}/${data.previous_use}` };
+  const next = ctx.lulucfStates.get(lulucfKey(data.uf, data.next_use));
+  if (!next) return { ok: false, missingFactor: `fator MUS ${data.uf}/${data.next_use}` };
+
+  const area = data.area_ha;
+  const csoloPrev = prev.socref * prev.flu * prev.fmg * prev.fi;
+  const csoloNext = next.socref * next.flu * next.fmg * next.fi;
+
+  // Solo — nunca amortiza (planilha: AJ46 = 1 sempre).
+  const emissaoSolo = Math.max(0, ((csoloPrev - csoloNext) * 44 * area) / 12);
+  const remocaoSolo = Math.max(0, ((csoloNext - csoloPrev) * 44 * area) / 12);
+
+  // Biomassa — emissão nunca amortiza; remoção amortiza em 20 anos quando o
+  // uso posterior é de crescimento lento (vegetação natural/silvicultura, ou
+  // cultura perene com biomassa lenhosa).
+  const emissaoBioAbs = Math.max(0, ((prev.cveg - next.cveg) * 44 * area) / 12);
+  const remocaoBioAbs = Math.max(0, ((next.cveg - prev.cveg) * 44 * area) / 12);
+  const isLongLived =
+    data.next_use.startsWith("Vegetação natural") ||
+    data.next_use === "Silvicultura" ||
+    (data.next_use === "Cultura perene" && data.perennial_woody_biomass === true);
+  const amortYears = remocaoBioAbs > 0 && isLongLived ? 20 : 1;
+  const emissaoBioReportada = emissaoBioAbs / amortYears;
+  const remocaoBioReportada = remocaoBioAbs / amortYears;
+
+  const emissoesTotais = Math.max(0, emissaoSolo + emissaoBioReportada - (remocaoSolo + remocaoBioReportada));
+  const remocoesTotais = Math.max(0, remocaoSolo + remocaoBioReportada - (emissaoSolo + emissaoBioReportada));
+
+  const computed: Computed = {
+    co2_t: 0,
+    ch4_t: 0,
+    n2o_t: 0,
+    // MUS é sempre biogênico (carbono do solo/vegetação) — não entra no
+    // total de escopo, reportado à parte (mesma regra do método "direct").
+    biogenic_co2_t: emissoesTotais,
+    biogenic_co2_removals_t: remocoesTotais,
+    co2e_t: 0,
+    factor_refs: [`lulucf:${data.uf}:${data.previous_use}->${data.next_use}`],
+    ar_version: ctx.arVersion,
+  };
+  return { ok: true, computed };
+}
+
+function calcLandUse(data: ActivityData, ctx: FactorContext): CalcResult {
+  if (data.source_category !== "land_use") return { ok: false, missingFactor: "tipo" };
+  if (data.method === "detailed") return calcLandUseDetailed(data, ctx);
+  return calcDirectGasEmission(data, ctx);
+}
+
 type Calculator = (data: ActivityData, ctx: FactorContext) => CalcResult;
 
 const calculators: Record<SourceCategory, Calculator> = {
@@ -643,7 +708,7 @@ const calculators: Record<SourceCategory, Calculator> = {
   agriculture: calcDirectGasEmission,
   effluents: calcEffluent,
   solid_waste: calcSolidWaste,
-  land_use: calcDirectGasEmission,
+  land_use: calcLandUse,
   fuel_energy_upstream: calcFuelEnergyUpstream,
   // Escopo 3 — as 12 categorias sem cálculo próprio usam o modelo de entrada
   // direta por gás da aba "Categorias de Escopo 3".

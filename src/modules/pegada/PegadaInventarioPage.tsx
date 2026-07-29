@@ -22,6 +22,7 @@ import { IndustrialProcessesSource } from "./sources/IndustrialProcessesSource";
 import { AgricultureSource } from "./sources/AgricultureSource";
 import { FugitiveSource } from "./sources/FugitiveSource";
 import { DirectGasEmissionSource } from "./sources/DirectGasEmissionSource";
+import { LandUseSource } from "./sources/LandUseSource";
 import { EffluentSource } from "./sources/EffluentSource";
 import { SolidWasteSource } from "./sources/SolidWasteSource";
 import { FuelEnergyUpstreamSource } from "./sources/FuelEnergyUpstreamSource";
@@ -242,18 +243,7 @@ export function PegadaInventarioPage() {
         {active === "industrial_processes" && <IndustrialProcessesSource {...commonProps} entries={entriesOf("industrial_processes")} />}
         {active === "agriculture" && <AgricultureSource {...commonProps} entries={entriesOf("agriculture")} />}
         {active === "effluents" && <EffluentSource {...commonProps} entries={entriesOf("effluents")} />}
-        {active === "land_use" && (
-          <DirectGasEmissionSource
-            {...commonProps}
-            category="land_use"
-            entries={entriesOf("land_use")}
-            title="Mudança no uso do solo"
-            description="Supressão de vegetação, reflorestamento e outras conversões de uso do solo (Escopo 1). Relate a massa emitida do gás; a absorção de CO₂ (ex.: reflorestamento) entra como remoção biogênica, reportada à parte. O cálculo detalhado por estoque de carbono e bioma entra numa fase seguinte."
-            sourceRefLabel="Registro da fonte"
-            sourceRefPlaceholder="ex.: BR-001"
-            descriptionFieldLabel="Descrição da atividade"
-          />
-        )}
+        {active === "land_use" && <LandUseSource {...commonProps} entries={entriesOf("land_use")} />}
         {active === "solid_waste" && <SolidWasteSource {...commonProps} entries={entriesOf("solid_waste")} inventoryYear={header.inventory_year} />}
         {active === "fuel_energy_upstream" && <FuelEnergyUpstreamSource {...commonProps} entries={entriesOf("fuel_energy_upstream")} />}
         {SCOPE3_GAS_ENTRY_CATEGORIES.includes(active as Scope3GasEntryCategory) && (

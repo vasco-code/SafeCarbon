@@ -102,6 +102,20 @@ export interface LandfillFactor {
   k: number;
 }
 
+// Escopo 1 — Mudança no uso do solo, método detalhado. SOCref/FLU/FMG/FI
+// (→ Csolo = SOCref×FLU×FMG×FI) e Cveg (= Cbm), por estado × categoria de
+// uso do solo (fonte BRLUC v1.3, Listas!CZ317:DJ559).
+export interface LulucfStateFactor {
+  uf: string;
+  stateName: string;
+  category: string;
+  socref: number;
+  flu: number;
+  fmg: number;
+  fi: number;
+  cveg: number;
+}
+
 // Qualidade do local de disposição → MCF (fator de correção de metano), da aba
 // "Resíduos sólidos" (Passo 4) via Listas!BT13:BU20. Lookup pequeno e acoplado
 // aos rótulos da UI, por isso constante do motor e não tabela.
@@ -146,6 +160,8 @@ export interface FactorContext {
   fleetTypes: string[]; // tipos de veículo distintos, ordenados
   landfill: LandfillFactor[]; // ordenado por position
   blends: Map<string, GasBlend>; // key: nome do composto (ex.: "R-410A")
+  lulucfStates: Map<string, LulucfStateFactor>; // key: `${uf}:${category}`
+  lulucfStateOptions: { uf: string; name: string }[]; // 27 estados, ordenados
   arVersion: string;
 }
 
@@ -160,6 +176,9 @@ export function effluentKey(domain: string, treatmentType: string) {
 }
 export function fleetKey(vehicleType: string, yearKey: string) {
   return `${vehicleType}:${yearKey}`;
+}
+export function lulucfKey(uf: string, category: string) {
+  return `${uf}:${category}`;
 }
 
 // Resolve o fator da frota tolerando anos fora da tabela: o ano exato, senão
@@ -189,7 +208,7 @@ export function getFleet(ctx: FactorContext, vehicleType: string, year?: number)
 export async function loadFactorContext(): Promise<FactorContext> {
   const [
     fuelsRes, gridRes, genericRes, gwpRes, wttRes, effluentRes, incinRes, fleetRes, landfillRes, blendsRes,
-    effluentNRes,
+    effluentNRes, lulucfRes,
   ] = await Promise.all([
     supabase.from("ghg_fuel_factors").select("*"),
     supabase.from("ghg_grid_factors").select("*"),
@@ -202,6 +221,7 @@ export async function loadFactorContext(): Promise<FactorContext> {
     supabase.from("ghg_landfill_factors").select("*"),
     supabase.from("ghg_gas_blends").select("*"),
     supabase.from("ghg_effluent_nitrogen_defaults").select("*"),
+    supabase.from("ghg_lulucf_state_factors").select("*"),
   ]);
 
   const fuels = new Map<number, FuelFactor>();
@@ -343,6 +363,27 @@ export async function loadFactorContext(): Promise<FactorContext> {
     effluentNitrogenDefaults.set(String(r.effluent_type), Number(r.nitrogen_kg_m3 ?? 0));
   }
 
+  const lulucfStates = new Map<string, LulucfStateFactor>();
+  const lulucfStateNames = new Map<string, string>();
+  for (const r of (lulucfRes.data ?? []) as Record<string, number | string>[]) {
+    const uf = String(r.uf);
+    const category = String(r.land_use_category);
+    lulucfStates.set(lulucfKey(uf, category), {
+      uf,
+      stateName: String(r.state_name),
+      category,
+      socref: Number(r.socref ?? 0),
+      flu: Number(r.flu ?? 1),
+      fmg: Number(r.fmg ?? 1),
+      fi: Number(r.fi ?? 1),
+      cveg: Number(r.cveg ?? 0),
+    });
+    lulucfStateNames.set(uf, String(r.state_name));
+  }
+  const lulucfStateOptions = [...lulucfStateNames.entries()]
+    .map(([uf, name]) => ({ uf, name }))
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
   const blends = new Map<string, GasBlend>();
   for (const r of (blendsRes.data ?? []) as Record<string, number | string>[]) {
     const name = String(r.blend);
@@ -353,7 +394,7 @@ export async function loadFactorContext(): Promise<FactorContext> {
 
   return {
     fuels, grid, generic, gwp, wttFuels, effluents, effluentNitrogenDefaults, incineration, fleet, fleetTypes,
-    landfill, blends, arVersion: AR_VERSION,
+    landfill, blends, lulucfStates, lulucfStateOptions, arVersion: AR_VERSION,
   };
 }
 

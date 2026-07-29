@@ -209,6 +209,48 @@ export interface DirectGasEmissionData {
   biogenic_co2_removals_t?: number;
 }
 
+export type LandUseMethod = "direct" | "detailed";
+
+// Mudança no uso do solo (Escopo 1). "direct" (Fase A) é o relato direto por
+// gás da Tabela 3 (mesmo modelo de DirectGasEmissionData) — lançamentos
+// antigos não têm `method` e caem aqui por padrão. "detailed" é a Tabela 1
+// (diferença de estoque de carbono): Csolo = SOCref×FLU×FMG×FI e Cbm = Cveg,
+// por estado × categoria de uso do solo (ghg_lulucf_state_factors, extraída
+// de Listas!CZ317:DJ559 — fonte BRLUC v1.3). Emissão/remoção = (estoque
+// anterior − posterior) × 44/12 × área; biomassa amortiza a REMOÇÃO em 20
+// anos quando o uso posterior é vegetação natural/silvicultura (ou cultura
+// perene com biomassa lenhosa) — emissões nunca amortizam, só remoções de
+// categorias de crescimento lento. Simplificação Fase A: usa a categoria de
+// vegetação natural direto da tabela por estado, sem descer ao nível de
+// fitofisionomia por bioma (refinamento opcional "possui a fitofisionomia?"
+// da planilha) nem aceitar override manual de estoque de carbono.
+export interface LandUseData {
+  method?: LandUseMethod; // default "direct" (retrocompatível)
+  // direct
+  gas?: string;
+  emitted_t?: number;
+  biogenic_co2_emissions_t?: number;
+  biogenic_co2_removals_t?: number;
+  // detailed
+  uf?: string; // sigla do estado em ghg_lulucf_state_factors
+  area_ha?: number;
+  previous_use?: string; // land_use_category (uso anterior)
+  next_use?: string; // land_use_category (uso posterior)
+  perennial_woody_biomass?: boolean; // só quando next_use = "Cultura perene" — ativa amortização de 20 anos na biomassa
+}
+
+// As 8 categorias de uso do solo da tabela BRLUC (Listas!CZ317:DJ317).
+export const LAND_USE_CATEGORIES = [
+  "Cultura anual",
+  "Cultura de cana",
+  "Cultura perene",
+  "Pastagem",
+  "Silvicultura",
+  "Vegetação natural, não especificada",
+  "Vegetação natural, Floresta",
+  "Vegetação natural, pastagem",
+] as const;
+
 // Emissões fugitivas (Escopo 1) — aba "Emissões fugitivas" da planilha. Todos
 // os métodos reduzem a uma MASSA LÍQUIDA de gás (kg), convertida a CO2e só pelo
 // GWP do gás (ghg_gwp já tem os 34 gases: HFC/PFC/SF6/NF3 etc.). Três métodos,
@@ -380,12 +422,7 @@ export type ActivityData =
   | ({ source_category: "industrial_processes" } & DirectGasEmissionData)
   | ({ source_category: "agriculture" } & DirectGasEmissionData)
   | ({ source_category: "effluents" } & EffluentData)
-  // Mudança no uso do solo — Fase A: relato direto por gás (Tabela 3 da aba
-  // "Mudança no uso do solo"), com CO2 biogênico emitido/removido à parte
-  // (supressão de vegetação emite; reflorestamento remove). O cálculo
-  // detalhado (diferença de estoque de carbono com amortização de 20 anos e
-  // fatores por bioma) fica para uma fase seguinte.
-  | ({ source_category: "land_use" } & DirectGasEmissionData)
+  | ({ source_category: "land_use" } & LandUseData)
   | ({ source_category: "solid_waste" } & SolidWasteData)
   | ({ source_category: "fuel_energy_upstream" } & FuelEnergyUpstreamData)
   | ({ source_category: Scope3GasEntryCategory } & DirectGasEmissionData);
