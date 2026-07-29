@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProjectRole } from "@/hooks/useProjectRole";
 import { FileDropzone } from "@/components/FileDropzone";
 
-type DocType = "dcp" | "resumo_calculo" | "auditoria_aprovacao" | "plano_melhorias" | "checklist" | "foto" | "outro";
+type DocType = "metodologia" | "dcp" | "resumo_calculo" | "auditoria_aprovacao" | "plano_melhorias" | "checklist" | "foto" | "outro";
 
 interface ProjectDocument {
   id: string;
@@ -18,6 +18,7 @@ interface ProjectDocument {
 }
 
 const DOC_TYPE_LABELS: Record<DocType, string> = {
+  metodologia: "Metodologia",
   dcp: "DCP",
   resumo_calculo: "Resumo de Cálculo",
   auditoria_aprovacao: "Aprovação de Auditoria",
@@ -27,7 +28,7 @@ const DOC_TYPE_LABELS: Record<DocType, string> = {
   outro: "Outro",
 };
 
-const DOC_TYPE_ORDER: DocType[] = ["dcp", "resumo_calculo", "checklist", "auditoria_aprovacao", "plano_melhorias", "foto", "outro"];
+const DOC_TYPE_ORDER: DocType[] = ["metodologia", "dcp", "resumo_calculo", "checklist", "auditoria_aprovacao", "plano_melhorias", "foto", "outro"];
 
 export function DocumentosPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -35,7 +36,7 @@ export function DocumentosPage() {
   const { orgId } = useProjectRole(projectId);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [loading, setLoading] = useState(true);
-  const [docType, setDocType] = useState<DocType>("dcp");
+  const [docType, setDocType] = useState<DocType>("metodologia");
   const [title, setTitle] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);

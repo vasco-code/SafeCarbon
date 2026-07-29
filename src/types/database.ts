@@ -392,7 +392,7 @@ export interface Database {
         Row: {
           id: string;
           project_id: string;
-          doc_type: "dcp" | "resumo_calculo" | "auditoria_aprovacao" | "plano_melhorias" | "checklist" | "foto" | "outro";
+          doc_type: "metodologia" | "dcp" | "resumo_calculo" | "auditoria_aprovacao" | "plano_melhorias" | "checklist" | "foto" | "outro";
           title: string;
           file_url: string;
           storage_path: string;

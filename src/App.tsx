@@ -31,9 +31,6 @@ function Header() {
             <NavLink to="/projetos" className={({ isActive }) => (isActive ? "active" : "")}>
               Projetos
             </NavLink>
-            <NavLink to="/metodologias" className={({ isActive }) => (isActive ? "active" : "")}>
-              Metodologias
-            </NavLink>
             {hasWallet && (
               <NavLink to="/carteira" className={({ isActive }) => (isActive ? "active" : "")}>
                 Carteira
