@@ -175,10 +175,26 @@ export interface BusinessTravelData {
   distance_km: number; // distância total (km) já somada dos trechos
 }
 
+// Casa-trabalho (Escopo 3 Cat. 7). "generic" cobre as Tabelas 1-3 da aba
+// (metroferroviário, ônibus, balsa) — fator flat kg/passageiro.km em
+// ghg_generic_factors, igual a business_travel. "private_vehicle" cobre as
+// Tabelas 4-6 (veículo particular do colaborador, por frota/combustível/
+// distância) — a planilha deriva o consumo mensal de combustível com um
+// detalhamento de blend etanol/biodiesel por mês; aqui o usuário informa o
+// litro/m³/kg total do ano direto (mesma simplificação que mobile_combustion
+// já usa) e o motor reusa exatamente ghg_fuel_factors + ghg_fleet_factors —
+// zero tabela nova.
 export interface CommutingData {
-  factor_key: string; // modal em ghg_generic_factors
-  passengers: number;
-  distance_km: number; // por trecho/período, distância total percorrida
+  method?: "generic" | "private_vehicle"; // default "generic" (retrocompatível)
+  // generic
+  factor_key?: string; // modal em ghg_generic_factors
+  passengers?: number;
+  distance_km?: number; // por trecho/período, distância total percorrida
+  // private_vehicle
+  fuel_ref_no?: number; // ref em ghg_fuel_factors
+  quantity?: number; // litros/m³/kg de combustível no ano
+  fleet_type?: string; // tipo de veículo em ghg_fleet_factors
+  fleet_year?: number;
 }
 
 // Processos industriais e Agricultura: o usuário relata a massa emitida do

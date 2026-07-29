@@ -583,10 +583,46 @@ const calculators: Record<SourceCategory, Calculator> = {
 
   commuting(data, ctx) {
     if (data.source_category !== "commuting") return { ok: false, missingFactor: "tipo" };
+
+    if (data.method === "private_vehicle") {
+      const fuel = data.fuel_ref_no != null ? ctx.fuels.get(data.fuel_ref_no) : undefined;
+      if (!fuel) return { ok: false, missingFactor: `combustível ref ${data.fuel_ref_no}` };
+      const q = data.quantity ?? 0;
+      const co2 = (q * fuel.co2_kg_un) / 1000;
+      const factorRefs = [`fuel:${fuel.ref_no}`];
+      let ch4: number;
+      let n2o: number;
+      if (data.fleet_type) {
+        const f = getFleet(ctx, data.fleet_type, data.fleet_year);
+        if (!f) return { ok: false, missingFactor: `frota ${data.fleet_type}` };
+        ch4 = (q * f.ch4_kg_l) / 1000;
+        n2o = (q * f.n2o_kg_l) / 1000;
+        factorRefs.push(`fleet:${f.vehicle_type}:${f.year_key}`);
+      } else {
+        // Sem frota informada: cai no fator por combustível do setor "energia"
+        // (neutro — deslocamento de colaborador não tem um setor real).
+        ch4 = (q * fuel.ch4_kg_un.energy) / 1000;
+        n2o = (q * fuel.n2o_kg_un.energy) / 1000;
+      }
+      const biogenic = fuel.is_biofuel ? co2 : 0;
+      const fossilCo2 = fuel.is_biofuel ? 0 : co2;
+      const computed: Computed = {
+        co2_t: fossilCo2,
+        ch4_t: ch4,
+        n2o_t: n2o,
+        biogenic_co2_t: biogenic,
+        co2e_t: co2eFossil(ctx, fossilCo2, ch4, n2o),
+        factor_refs: factorRefs,
+        ar_version: ctx.arVersion,
+      };
+      return { ok: true, computed };
+    }
+
+    if (!data.factor_key) return { ok: false, missingFactor: "modal de transporte" };
     const f = ctx.generic.get(genericKey("commuting", data.factor_key));
     if (!f) return { ok: false, missingFactor: `fator casa-trabalho ${data.factor_key}` };
     // Fator por passageiro.km; total = passageiros × distância.
-    const pkm = data.passengers * data.distance_km;
+    const pkm = (data.passengers ?? 0) * (data.distance_km ?? 0);
     const co2 = (pkm * f.co2_kg) / 1000;
     const ch4 = (pkm * f.ch4_kg) / 1000;
     const n2o = (pkm * f.n2o_kg) / 1000;
