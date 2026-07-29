@@ -16,6 +16,9 @@ export type SourceCategory =
   | "fugitive"
   | "electricity_location"
   | "electricity_market"
+  | "td_losses_location"
+  | "td_losses_market"
+  | "thermal_energy_purchased"
   | "business_travel"
   | "commuting"
   | "industrial_processes"
@@ -65,6 +68,9 @@ export const SCOPE_OF_SOURCE: Record<SourceCategory, Scope> = {
   fugitive: 1,
   electricity_location: 2,
   electricity_market: 2,
+  td_losses_location: 2,
+  td_losses_market: 2,
+  thermal_energy_purchased: 2,
   business_travel: 3,
   commuting: 3,
   industrial_processes: 1,
@@ -131,6 +137,37 @@ export interface ElectricityMarketData {
   co2_t_mwh: number;
   ch4_t_mwh?: number;
   n2o_t_mwh?: number;
+}
+
+// Escopo 2 — Perdas de transmissão/distribuição da eletricidade comprada da
+// rede (abas "Perdas T&D (abord. localização/escolha de compra)"). Mesma
+// matemática de ElectricityLocation/MarketData — só a origem da eletricidade
+// muda (perda, não consumo direto) — por isso reusam o fator do SIN/fator do
+// instrumento em vez de uma tabela própria.
+export interface TdLossesLocationData {
+  mwh: number; // eletricidade perdida em T&D, oriunda do SIN
+  year: number;
+}
+
+export interface TdLossesMarketData {
+  mwh: number; // eletricidade perdida em T&D, oriunda de fonte com instrumento contratual
+  co2_t_mwh: number;
+  ch4_t_mwh?: number;
+  n2o_t_mwh?: number;
+}
+
+// Escopo 2 — Compra de energia térmica/vapor (aba "Compra de Energia
+// Térmica"). Consumo de combustível (GJ) = vapor comprado (GJ) / eficiência
+// do fervedor (0,8 = 80% default da planilha se não informado); emissões =
+// consumo × fator kg/TJ do combustível (setor Energia, ghg_fuel_factors,
+// ÷1e6 → toneladas) — reusa a mesma tabela de Combustão estacionária, mas
+// pelo fator BRUTO por TJ, não pelo já convertido por unidade física (a
+// entrada aqui é em GJ, não em litros/kg/m³). A planilha não separa CO2
+// biogênico nesta aba (diferente de Combustão estacionária).
+export interface ThermalEnergyPurchasedData {
+  fuel_ref_no: number; // ref na tabela ghg_fuel_factors
+  steam_gj: number; // vapor comprado (GJ)
+  boiler_efficiency: number; // 0-1; planilha usa 0,8 como default
 }
 
 export interface BusinessTravelData {
@@ -224,6 +261,11 @@ export interface EffluentData {
   method: EffluentMethod;
   // detailed
   domain?: "domestic" | "industrial";
+  // Origem industrial do efluente (chave em ghg_effluent_nitrogen_defaults) —
+  // quando informada, o motor usa o N default do IPCC (VLOOKUP da planilha)
+  // em qualquer etapa cujo `nitrogen_kg_m3` fique em branco. Doméstico e
+  // "Outros efluentes industriais" não têm default — exigem N manual.
+  effluent_type?: string;
   treatment_type?: string; // chave em ghg_effluent_factors
   volume_m3?: number; // Q — vazão anual
   organic_unit?: "dbo" | "dqo";
@@ -314,6 +356,9 @@ export type ActivityData =
   | ({ source_category: "fugitive" } & FugitiveEmissionData)
   | ({ source_category: "electricity_location" } & ElectricityLocationData)
   | ({ source_category: "electricity_market" } & ElectricityMarketData)
+  | ({ source_category: "td_losses_location" } & TdLossesLocationData)
+  | ({ source_category: "td_losses_market" } & TdLossesMarketData)
+  | ({ source_category: "thermal_energy_purchased" } & ThermalEnergyPurchasedData)
   | ({ source_category: "business_travel" } & BusinessTravelData)
   | ({ source_category: "commuting" } & CommutingData)
   | ({ source_category: "industrial_processes" } & DirectGasEmissionData)

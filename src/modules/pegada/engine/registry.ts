@@ -184,6 +184,11 @@ function calcEffluent(data: ActivityData, ctx: FactorContext): CalcResult {
   // ao ambiente (11-12). Cada etapa contribui com CH4 e N2O próprios.
   if (!data.domain || !data.treatment_type) return { ok: false, missingFactor: "tipo de tratamento" };
   const domain = data.domain;
+  // Default de N (VLOOKUP efu_tipo_de_eflu da planilha) aplicado em qualquer
+  // etapa cujo nitrogen_kg_m3 fique em branco — só existe para as origens
+  // industriais conhecidas; sem effluent_type ou fora da tabela, cai pra 0.
+  const effluentType = data.effluent_type;
+  const nDefault = effluentType != null ? ctx.effluentNitrogenDefaults.get(effluentType) : undefined;
 
   // `allowRemoval` distingue tratamento (subtrai carga removida e CH4
   // recuperado) de disposição final (a planilha não considera nenhum dos dois).
@@ -200,11 +205,15 @@ function calcEffluent(data: ActivityData, ctx: FactorContext): CalcResult {
     const efCh4 = s.organic_unit === "dqo" ? f.ef_ch4_kg_dqo : f.ef_ch4_kg_dbo;
     const recovered = allowRemoval ? (s.ch4_recovered_t ?? 0) : 0;
     const efN2o = (44 / 28) * f.ef_n2o_n_kg_n; // kgN2O-N/kgN → kgN2O/kgN
+    const nitrogen = s.nitrogen_kg_m3 ?? nDefault ?? 0;
     return {
       ch4: (q * (load - removed) * efCh4) / 1000 - recovered,
-      n2o: (q * (s.nitrogen_kg_m3 ?? 0) * efN2o) / 1000,
+      n2o: (q * nitrogen * efN2o) / 1000,
       biogenic: allowRemoval && s.biogas_flared ? recovered * (44 / 16) : 0,
-      ref: `effluent:${domain}:${s.treatment_type}:${s.organic_unit ?? "dbo"}`,
+      ref:
+        s.nitrogen_kg_m3 == null && nDefault != null
+          ? `effluent:${domain}:${s.treatment_type}:${s.organic_unit ?? "dbo"}:n_default:${effluentType}`
+          : `effluent:${domain}:${s.treatment_type}:${s.organic_unit ?? "dbo"}`,
     };
   }
 
@@ -485,6 +494,68 @@ const calculators: Record<SourceCategory, Calculator> = {
       biogenic_co2_t: 0,
       co2e_t: co2eFossil(ctx, co2, ch4, n2o),
       factor_refs: ["user_supplied_factor"],
+      ar_version: ctx.arVersion,
+    };
+    return { ok: true, computed };
+  },
+
+  td_losses_location(data, ctx) {
+    if (data.source_category !== "td_losses_location") return { ok: false, missingFactor: "tipo" };
+    const g = getGrid(ctx, data.year);
+    if (!g) return { ok: false, missingFactor: `fator do SIN para ${data.year}` };
+    const co2 = data.mwh * g.co2_t_mwh;
+    const ch4 = data.mwh * g.ch4_t_mwh;
+    const n2o = data.mwh * g.n2o_t_mwh;
+    const computed: Computed = {
+      co2_t: co2,
+      ch4_t: ch4,
+      n2o_t: n2o,
+      biogenic_co2_t: 0,
+      co2e_t: co2eFossil(ctx, co2, ch4, n2o),
+      factor_refs: [`grid:SIN:${data.year}`],
+      ar_version: ctx.arVersion,
+      factor_year: data.year,
+    };
+    return { ok: true, computed };
+  },
+
+  td_losses_market(data, ctx) {
+    if (data.source_category !== "td_losses_market") return { ok: false, missingFactor: "tipo" };
+    const co2 = data.mwh * data.co2_t_mwh;
+    const ch4 = data.mwh * (data.ch4_t_mwh ?? 0);
+    const n2o = data.mwh * (data.n2o_t_mwh ?? 0);
+    const computed: Computed = {
+      co2_t: co2,
+      ch4_t: ch4,
+      n2o_t: n2o,
+      biogenic_co2_t: 0,
+      co2e_t: co2eFossil(ctx, co2, ch4, n2o),
+      factor_refs: ["user_supplied_factor"],
+      ar_version: ctx.arVersion,
+    };
+    return { ok: true, computed };
+  },
+
+  thermal_energy_purchased(data, ctx) {
+    if (data.source_category !== "thermal_energy_purchased") return { ok: false, missingFactor: "tipo" };
+    const fuel = ctx.fuels.get(data.fuel_ref_no);
+    if (!fuel) return { ok: false, missingFactor: `combustível ref ${data.fuel_ref_no}` };
+    if (fuel.co2_kg_tj == null) return { ok: false, missingFactor: `fator kg/TJ não disponível para ${fuel.name_pt}` };
+    const efficiency = data.boiler_efficiency > 0 ? data.boiler_efficiency : 0.8;
+    const consumptionGj = data.steam_gj / efficiency;
+    // kg/TJ ÷ 1000 = kg/GJ; ÷ 1000 de novo para chegar em toneladas.
+    const co2 = (consumptionGj * fuel.co2_kg_tj) / 1e6;
+    const ch4 = (consumptionGj * (fuel.ch4_kg_tj_energy ?? 0)) / 1e6;
+    const n2o = (consumptionGj * (fuel.n2o_kg_tj_energy ?? 0)) / 1e6;
+    // A planilha não separa CO2 biogênico nesta aba (diferente de Combustão
+    // estacionária) — todo o CO2 entra como fóssil, mesmo para biocombustível.
+    const computed: Computed = {
+      co2_t: co2,
+      ch4_t: ch4,
+      n2o_t: n2o,
+      biogenic_co2_t: 0,
+      co2e_t: co2eFossil(ctx, co2, ch4, n2o),
+      factor_refs: [`fuel_tj:${fuel.ref_no}`],
       ar_version: ctx.arVersion,
     };
     return { ok: true, computed };

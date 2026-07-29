@@ -92,7 +92,7 @@ function StageFields({
         </>
       )}
 
-      <label htmlFor={`${idPrefix}-n`}>Nitrogênio no efluente (kgN/m³, opcional — para N₂O)</label>
+      <label htmlFor={`${idPrefix}-n`}>Nitrogênio no efluente (kgN/m³, opcional — deixe em branco para usar o default da origem, se houver)</label>
       <input id={`${idPrefix}-n`} type="number" step="0.0001" min="0" value={stage.nitrogen_kg_m3} onChange={(e) => set("nitrogen_kg_m3")(e.target.value)} />
 
       {allowRemoval && (
@@ -135,8 +135,14 @@ export function EffluentSource({ inventoryId, ctx, entries, reload, readOnly }: 
     return map;
   }, [ctx.effluents]);
 
+  const nitrogenDefaultTypes = useMemo(
+    () => [...ctx.effluentNitrogenDefaults.keys()].sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [ctx.effluentNitrogenDefaults],
+  );
+
   const [method, setMethod] = useState<EffluentMethod>("detailed");
   const [domain, setDomain] = useState<"domestic" | "industrial">("domestic");
+  const [effluentType, setEffluentType] = useState("");
   const [treatment, setTreatment] = useState("");
   const [volume, setVolume] = useState("");
   const [organicUnit, setOrganicUnit] = useState<"dbo" | "dqo">("dbo");
@@ -178,6 +184,7 @@ export function EffluentSource({ inventoryId, ctx, entries, reload, readOnly }: 
       source_category: "effluents",
       method: "detailed",
       domain,
+      effluent_type: domain === "industrial" && effluentType ? effluentType : undefined,
       treatment_type: treatment,
       volume_m3: volume ? Number(volume) : undefined,
       organic_unit: organicUnit,
@@ -218,6 +225,7 @@ export function EffluentSource({ inventoryId, ctx, entries, reload, readOnly }: 
     if (err) {
       setError(err);
     } else {
+      setEffluentType("");
       setVolume("");
       setOrganicLoad("");
       setOrganicRemoved("");
@@ -274,6 +282,7 @@ export function EffluentSource({ inventoryId, ctx, entries, reload, readOnly }: 
                 onChange={(e) => {
                   setDomain(e.target.value as "domestic" | "industrial");
                   setTreatment("");
+                  setEffluentType("");
                 }}
               >
                 {(Object.keys(DOMAIN_LABELS) as ("domestic" | "industrial")[]).map((d) => (
@@ -282,6 +291,26 @@ export function EffluentSource({ inventoryId, ctx, entries, reload, readOnly }: 
                   </option>
                 ))}
               </select>
+
+              {domain === "industrial" && (
+                <>
+                  <label htmlFor="ef-origin">Origem do efluente (opcional — default de nitrogênio)</label>
+                  <select id="ef-origin" value={effluentType} onChange={(e) => setEffluentType(e.target.value)}>
+                    <option value="">Nenhuma / outros efluentes industriais (informar N manualmente)</option>
+                    {nitrogenDefaultTypes.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                  {effluentType && (
+                    <p style={{ fontSize: "0.8125rem", color: "var(--sc-muted)", marginTop: 0 }}>
+                      Default IPCC: {fmt(ctx.effluentNitrogenDefaults.get(effluentType) ?? 0, 4)} kgN/m³ — usado em
+                      qualquer etapa cujo campo de nitrogênio ficar em branco.
+                    </p>
+                  )}
+                </>
+              )}
 
               <label htmlFor="ef-treatment">Tipo de tratamento</label>
               <select id="ef-treatment" value={treatment} onChange={(e) => setTreatment(e.target.value)}>

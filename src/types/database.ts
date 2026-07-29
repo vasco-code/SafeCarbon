@@ -510,6 +510,8 @@ export interface Database {
           is_biofuel: boolean;
           source_ref: string | null;
           source: string | null;
+          ch4_kg_tj_energy: number | null;
+          n2o_kg_tj_energy: number | null;
         };
         Insert: Partial<Database["public"]["Tables"]["ghg_fuel_factors"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["ghg_fuel_factors"]["Row"]>;
@@ -588,6 +590,17 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["ghg_effluent_factors"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["ghg_effluent_factors"]["Row"]>;
+        Relationships: [];
+      };
+      ghg_effluent_nitrogen_defaults: {
+        Row: {
+          id: string;
+          effluent_type: string;
+          nitrogen_kg_m3: number;
+          source: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ghg_effluent_nitrogen_defaults"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["ghg_effluent_nitrogen_defaults"]["Row"]>;
         Relationships: [];
       };
       ghg_incineration_factors: {

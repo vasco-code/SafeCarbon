@@ -20,9 +20,12 @@ export const SOURCES: SourceMeta[] = [
   { category: "land_use", label: "Mudança no uso do solo", scope: 1, implemented: true },
   { category: "solid_waste", label: "Resíduos sólidos", scope: 1, implemented: true },
   { category: "effluents", label: "Efluentes", scope: 1, implemented: true },
-  // Escopo 2
+  // Escopo 2 — as 5 abordagens da planilha (Resumo, linha 128)
   { category: "electricity_location", label: "Energia elétrica (localização)", scope: 2, implemented: true },
+  { category: "td_losses_location", label: "Perdas T&D (localização)", scope: 2, implemented: true },
   { category: "electricity_market", label: "Energia elétrica (escolha de compra)", scope: 2, implemented: true },
+  { category: "td_losses_market", label: "Perdas T&D (escolha de compra)", scope: 2, implemented: true },
+  { category: "thermal_energy_purchased", label: "Compra de energia térmica", scope: 2, implemented: true },
   // Escopo 3 — as 15 categorias do GHG Protocol, na ordem oficial.
   { category: "purchased_goods", label: "1. Bens e serviços comprados", scope: 3, implemented: true },
   { category: "capital_goods", label: "2. Bens de capital", scope: 3, implemented: true },

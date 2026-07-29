@@ -14,6 +14,12 @@ export interface FuelFactor {
   co2_kg_un: number;
   ch4_kg_un: Record<ActivitySector, number>;
   n2o_kg_un: Record<ActivitySector, number>;
+  // Fatores BRUTOS por TJ (setor Energia, não convertidos por unidade física)
+  // — usados por "Compra de Energia Térmica" (Escopo 2), cuja entrada é em GJ
+  // de vapor/combustível, não na unidade física do combustível.
+  co2_kg_tj: number | null;
+  ch4_kg_tj_energy: number | null;
+  n2o_kg_tj_energy: number | null;
 }
 
 export interface GridFactor {
@@ -134,6 +140,7 @@ export interface FactorContext {
   gwp: Map<string, number>;
   wttFuels: Map<string, WttFuelFactor>; // key: name_pt normalizado
   effluents: Map<string, EffluentFactor>; // key: `${domain}:${treatment_type}`
+  effluentNitrogenDefaults: Map<string, number>; // key: origem industrial (efu_tipo_de_eflu)
   incineration: IncinerationFactor[]; // ordenado por position
   fleet: Map<string, FleetFactor>; // key `${vehicle_type}:${year_key}`
   fleetTypes: string[]; // tipos de veículo distintos, ordenados
@@ -180,8 +187,10 @@ export function getFleet(ctx: FactorContext, vehicleType: string, year?: number)
 // Carrega todas as tabelas de fator uma vez e indexa em Map (dado de
 // referência, pequeno e cacheável — ~800 combustíveis são dezenas de KB).
 export async function loadFactorContext(): Promise<FactorContext> {
-  const [fuelsRes, gridRes, genericRes, gwpRes, wttRes, effluentRes, incinRes, fleetRes, landfillRes, blendsRes] =
-    await Promise.all([
+  const [
+    fuelsRes, gridRes, genericRes, gwpRes, wttRes, effluentRes, incinRes, fleetRes, landfillRes, blendsRes,
+    effluentNRes,
+  ] = await Promise.all([
     supabase.from("ghg_fuel_factors").select("*"),
     supabase.from("ghg_grid_factors").select("*"),
     supabase.from("ghg_generic_factors").select("*"),
@@ -192,11 +201,13 @@ export async function loadFactorContext(): Promise<FactorContext> {
     supabase.from("ghg_fleet_factors").select("*"),
     supabase.from("ghg_landfill_factors").select("*"),
     supabase.from("ghg_gas_blends").select("*"),
+    supabase.from("ghg_effluent_nitrogen_defaults").select("*"),
   ]);
 
   const fuels = new Map<number, FuelFactor>();
-  for (const r of (fuelsRes.data ?? []) as Record<string, number | string | boolean>[]) {
+  for (const r of (fuelsRes.data ?? []) as Record<string, number | string | boolean | null>[]) {
     const num = (v: unknown) => (v == null ? 0 : Number(v));
+    const numOrNull = (v: unknown) => (v == null ? null : Number(v));
     fuels.set(Number(r.ref_no), {
       ref_no: Number(r.ref_no),
       name_pt: String(r.name_pt),
@@ -215,6 +226,9 @@ export async function loadFactorContext(): Promise<FactorContext> {
         commercial: num(r.n2o_kg_un_commercial),
         residential: num(r.n2o_kg_un_residential),
       },
+      co2_kg_tj: numOrNull(r.co2_kg_tj),
+      ch4_kg_tj_energy: numOrNull(r.ch4_kg_tj_energy),
+      n2o_kg_tj_energy: numOrNull(r.n2o_kg_tj_energy),
     });
   }
 
@@ -324,6 +338,11 @@ export async function loadFactorContext(): Promise<FactorContext> {
   }
   landfill.sort((a, b) => a.position - b.position);
 
+  const effluentNitrogenDefaults = new Map<string, number>();
+  for (const r of (effluentNRes.data ?? []) as Record<string, number | string>[]) {
+    effluentNitrogenDefaults.set(String(r.effluent_type), Number(r.nitrogen_kg_m3 ?? 0));
+  }
+
   const blends = new Map<string, GasBlend>();
   for (const r of (blendsRes.data ?? []) as Record<string, number | string>[]) {
     const name = String(r.blend);
@@ -333,8 +352,8 @@ export async function loadFactorContext(): Promise<FactorContext> {
   }
 
   return {
-    fuels, grid, generic, gwp, wttFuels, effluents, incineration, fleet, fleetTypes, landfill, blends,
-    arVersion: AR_VERSION,
+    fuels, grid, generic, gwp, wttFuels, effluents, effluentNitrogenDefaults, incineration, fleet, fleetTypes,
+    landfill, blends, arVersion: AR_VERSION,
   };
 }
 

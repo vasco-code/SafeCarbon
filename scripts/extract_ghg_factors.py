@@ -67,6 +67,8 @@ def extract_fuels(ws):
             "density_kg_unit": ws.cell(row=r, column=7).value,  # G
             "source_ref": ws.cell(row=r, column=8).value,     # H
             "co2_kg_tj": ws.cell(row=r, column=9).value,      # I
+            "ch4_kg_tj_energy": ws.cell(row=r, column=11).value,  # K
+            "n2o_kg_tj_energy": ws.cell(row=r, column=15).value,  # O
             "co2_kg_un": ws.cell(row=r, column=20).value,     # T
             "ch4_energy": ws.cell(row=r, column=21).value,    # U
             "ch4_manuf": ws.cell(row=r, column=22).value,     # V
@@ -79,6 +81,42 @@ def extract_fuels(ws):
             "biofuel": is_biofuel(name),
         })
     return rows
+
+
+def print_thermal_seed(fe):
+    """Seed isolado das colunas kg/TJ (setor Energia) de ghg_fuel_factors —
+    usadas por 'Compra de Energia Térmica' (Escopo 2): o combustível aí é
+    medido em GJ (vapor comprado / eficiência do fervedor), não na unidade
+    física do combustível, então precisa do fator bruto kg/TJ (÷1000 = kg/GJ),
+    não do kg/un. já convertido. Colunas K (CH4) e O (N2O) de 'Fatores de
+    Emissão', mesmas linhas 31-92 de extract_fuels."""
+    fuels = extract_fuels(fe)
+    print("-- Seed de ghg_fuel_factors.ch4_kg_tj_energy/n2o_kg_tj_energy — gerado por "
+          "scripts/extract_ghg_factors.py --thermal")
+    print(f"-- {len(fuels)} combustíveis\n")
+    for f in fuels:
+        print(
+            f"update ghg_fuel_factors set ch4_kg_tj_energy = {num(f['ch4_kg_tj_energy'])}, "
+            f"n2o_kg_tj_energy = {num(f['n2o_kg_tj_energy'])} where ref_no = {f['ref_no']};"
+        )
+
+
+def print_effluent_nitrogen_seed(listas):
+    """Seed de ghg_effluent_nitrogen_defaults — default de N (kgN/m3) por
+    origem industrial de efluente, named range efu_tipo_de_eflu (Listas!CA39:CB46).
+    Esgoto doméstico e 'Outros efluentes industriais' NÃO têm default na
+    planilha — exigem teor de N informado manualmente."""
+    print("-- Seed de ghg_effluent_nitrogen_defaults — gerado por scripts/extract_ghg_factors.py --effluent-n")
+    print("delete from ghg_effluent_nitrogen_defaults;\n")
+    for r in range(39, 47):
+        name = listas.cell(row=r, column=79).value  # CA
+        n = listas.cell(row=r, column=80).value      # CB
+        if not name or n is None:
+            continue
+        print(
+            "insert into ghg_effluent_nitrogen_defaults (effluent_type, nitrogen_kg_m3, source) values ("
+            f"{sqlstr(str(name).strip())}, {num(n)}, 'IPCC 2019 via GHG Protocol FGV v2026.0.1');"
+        )
 
 
 def extract_grid(ws):
@@ -387,6 +425,14 @@ def main():
 
     if "--blends" in flags:
         print_blends_seed(wb["Emissões fugitivas"])
+        return
+
+    if "--thermal" in flags:
+        print_thermal_seed(fe)
+        return
+
+    if "--effluent-n" in flags:
+        print_effluent_nitrogen_seed(wb["Listas"])
         return
 
     fuels = extract_fuels(fe)

@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft, Leaf, Factory, Fuel, Zap, Plug, Plane, Bus, Lock, FlaskConical, Wheat, Droplets,
   Wind, Waves, Trash2, Package, Building2, Truck, Recycle, Warehouse, Cog, ShoppingCart, Store,
-  TrendingUp, PackageOpen, FileDown, TreePine,
+  TrendingUp, PackageOpen, FileDown, TreePine, Cable, Flame,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { loadFactorContext, type FactorContext } from "./engine/factors";
@@ -25,6 +25,9 @@ import { DirectGasEmissionSource } from "./sources/DirectGasEmissionSource";
 import { EffluentSource } from "./sources/EffluentSource";
 import { SolidWasteSource } from "./sources/SolidWasteSource";
 import { FuelEnergyUpstreamSource } from "./sources/FuelEnergyUpstreamSource";
+import { TdLossesLocationSource } from "./sources/TdLossesLocationSource";
+import { TdLossesMarketSource } from "./sources/TdLossesMarketSource";
+import { ThermalEnergyPurchasedSource } from "./sources/ThermalEnergyPurchasedSource";
 import { ImportPlanilhaPanel } from "./ImportPlanilhaPanel";
 import { downloadInventoryReport } from "./inventoryReport";
 
@@ -41,6 +44,9 @@ const SOURCE_ICONS: Record<string, typeof Factory> = {
   fugitive: Wind,
   electricity_location: Zap,
   electricity_market: Plug,
+  td_losses_location: Cable,
+  td_losses_market: Cable,
+  thermal_energy_purchased: Flame,
   business_travel: Plane,
   commuting: Bus,
   industrial_processes: FlaskConical,
@@ -228,6 +234,9 @@ export function PegadaInventarioPage() {
         {active === "fugitive" && <FugitiveSource {...commonProps} entries={entriesOf("fugitive")} />}
         {active === "electricity_location" && <ElectricityLocationSource {...commonProps} entries={entriesOf("electricity_location")} defaultYear={header.inventory_year} />}
         {active === "electricity_market" && <ElectricityMarketSource {...commonProps} entries={entriesOf("electricity_market")} />}
+        {active === "td_losses_location" && <TdLossesLocationSource {...commonProps} entries={entriesOf("td_losses_location")} defaultYear={header.inventory_year} />}
+        {active === "td_losses_market" && <TdLossesMarketSource {...commonProps} entries={entriesOf("td_losses_market")} />}
+        {active === "thermal_energy_purchased" && <ThermalEnergyPurchasedSource {...commonProps} entries={entriesOf("thermal_energy_purchased")} />}
         {active === "business_travel" && <BusinessTravelSource {...commonProps} entries={entriesOf("business_travel")} />}
         {active === "commuting" && <CommutingSource {...commonProps} entries={entriesOf("commuting")} />}
         {active === "industrial_processes" && <IndustrialProcessesSource {...commonProps} entries={entriesOf("industrial_processes")} />}
