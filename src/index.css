@@ -643,10 +643,17 @@ textarea:focus {
   color: var(--sc-ink);
 }
 
+/* NÃO usar display:flex aqui — um <td> com display:flex sai do fluxo normal
+   de célula de tabela (mantém a largura do grid, mas a altura/borda passam a
+   ser as do próprio flex box, não as da linha), o que quebra a borda inferior
+   da linha quando a célula fica vazia (ex.: usuário sem permissão pra ação).
+   text-align + margin entre botões dá o mesmo layout sem sair de table-cell. */
 .row-actions {
-  display: flex;
-  gap: 0.35rem;
-  justify-content: flex-end;
+  text-align: right;
+}
+
+.row-actions button + button {
+  margin-left: 0.35rem;
 }
 
 .methodology-layout {
