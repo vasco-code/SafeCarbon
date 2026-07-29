@@ -237,7 +237,7 @@ button[type="submit"]:hover:not(:disabled),
    CTAs com className="btn-primary" renderizavam como outline em vez de
    sólido, porque `main button[type="button"]` vence `.btn-primary` em
    especificidade. */
-main button[type="button"]:not(.btn-primary):not(.btn-danger):not(.btn-icon-danger) {
+main button[type="button"]:not(.btn-primary):not(.btn-danger):not(.btn-icon-danger):not(.project-tab) {
   background: transparent;
   color: var(--sc-ink);
   border: 1px solid var(--sc-border);
@@ -249,7 +249,7 @@ main button[type="button"]:not(.btn-primary):not(.btn-danger):not(.btn-icon-dang
   transition: background 150ms ease-out, border-color 150ms ease-out;
 }
 
-main button[type="button"]:not(.btn-primary):not(.btn-danger):not(.btn-icon-danger):hover:not(:disabled) {
+main button[type="button"]:not(.btn-primary):not(.btn-danger):not(.btn-icon-danger):not(.project-tab):hover:not(:disabled) {
   background: var(--sc-surface-2);
   border-color: var(--sc-muted);
 }
