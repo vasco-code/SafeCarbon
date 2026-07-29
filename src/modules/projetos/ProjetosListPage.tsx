@@ -14,6 +14,13 @@ interface ProjectRow {
   organizations_developer: { name: string; logo_url: string | null } | null;
 }
 
+interface ExistingPhoto {
+  id: string;
+  title: string;
+  storage_path: string;
+  url: string | null;
+}
+
 interface OrgOption {
   id: string;
   name: string;
@@ -137,6 +144,157 @@ function OrgPicker({
   );
 }
 
+function EditProjectPanel({ project, onClose, onSaved }: { project: ProjectRow; onClose: () => void; onSaved: () => void }) {
+  const { user } = useAuth();
+  const [description, setDescription] = useState("");
+  const [existingPhotos, setExistingPhotos] = useState<ExistingPhoto[]>([]);
+  const [newPhotos, setNewPhotos] = useState<File[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadPhotos() {
+    const { data } = await supabase
+      .from("project_documents")
+      .select("id, title, storage_path")
+      .eq("project_id", project.id)
+      .eq("doc_type", "foto");
+    const rows = (data as { id: string; title: string; storage_path: string }[]) ?? [];
+    const withUrls = await Promise.all(
+      rows.map(async (r) => {
+        const { data: signed } = await supabase.storage.from("project-documents").createSignedUrl(r.storage_path, 3600);
+        return { ...r, url: signed?.signedUrl ?? null };
+      }),
+    );
+    setExistingPhotos(withUrls);
+  }
+
+  useEffect(() => {
+    async function load() {
+      const { data } = await supabase.from("carbon_projects").select("description").eq("id", project.id).maybeSingle();
+      setDescription(data?.description ?? "");
+      await loadPhotos();
+      setLoading(false);
+    }
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project.id]);
+
+  async function handleRemovePhoto(photo: ExistingPhoto) {
+    if (!confirm(`Remover a foto "${photo.title}"?`)) return;
+    await supabase.storage.from("project-documents").remove([photo.storage_path]);
+    await supabase.from("project_documents").delete().eq("id", photo.id);
+    setExistingPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+
+    const { error: updateError } = await supabase
+      .from("carbon_projects")
+      .update({ description: description.trim() || null })
+      .eq("id", project.id);
+    if (updateError) {
+      setError(updateError.message);
+      setSaving(false);
+      return;
+    }
+
+    for (const file of newPhotos) {
+      const path = `${project.id}/foto/${Date.now()}-${file.name}`;
+      const { error: uploadError } = await supabase.storage.from("project-documents").upload(path, file);
+      if (uploadError) {
+        setError(`Erro ao enviar uma foto: ${uploadError.message}`);
+        continue;
+      }
+      await supabase.from("project_documents").insert({
+        project_id: project.id,
+        doc_type: "foto",
+        title: file.name,
+        file_url: path,
+        storage_path: path,
+        uploaded_by: user?.id,
+        uploaded_by_org_id: project.proponent_org_id,
+      });
+    }
+
+    setSaving(false);
+    setNewPhotos([]);
+    onSaved();
+    if (!error) onClose();
+  }
+
+  return (
+    <div className="nfe-preview" style={{ maxWidth: "none", marginBottom: "1.5rem" }}>
+      <h3 style={{ marginTop: 0 }}>Editar — {project.name}</h3>
+      {loading ? (
+        <p>Carregando...</p>
+      ) : (
+        <>
+          <label htmlFor="edit-description">Mini-descrição do projeto</label>
+          <textarea
+            id="edit-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            placeholder="Resumo curto do projeto — o que ele faz e qual o produto/atividade."
+          />
+
+          <label>Fotos do projeto</label>
+          {existingPhotos.length > 0 && (
+            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+              {existingPhotos.map((photo) => (
+                <div key={photo.id} style={{ display: "flex", flexDirection: "column", gap: "0.25rem", alignItems: "center" }}>
+                  {photo.url ? (
+                    <img src={photo.url} alt={photo.title} style={{ width: "120px", height: "90px", objectFit: "cover", borderRadius: "6px" }} />
+                  ) : (
+                    <div style={{ width: "120px", height: "90px", background: "var(--sc-surface)", borderRadius: "6px" }} />
+                  )}
+                  <button type="button" className="btn-icon-danger" onClick={() => handleRemovePhoto(photo)}>
+                    Remover
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <FileDropzone
+            multiple
+            accept="image/*"
+            onFiles={(files) => setNewPhotos((prev) => [...prev, ...files])}
+            disabled={saving}
+            label="Arraste fotos aqui ou clique para escolher"
+            hint="Imagens do projeto/atividade — exibidas na carteira de créditos."
+          />
+          {newPhotos.length > 0 && (
+            <ul style={{ listStyle: "none", padding: 0, display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.5rem" }}>
+              {newPhotos.map((file, index) => (
+                <li key={`${file.name}-${index}`} className="badge badge-neutral" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  {file.name}
+                  <button type="button" className="btn-icon-danger" onClick={() => setNewPhotos((prev) => prev.filter((_, i) => i !== index))}>
+                    Remover
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {error && <p className="auth-error">{error}</p>}
+
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+            <button type="button" className="btn-primary" onClick={handleSave} disabled={saving}>
+              {saving ? "Salvando..." : "Salvar"}
+            </button>
+            <button type="button" onClick={onClose} disabled={saving}>
+              Cancelar
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function ProjetosListPage() {
   const navigate = useNavigate();
   const { canAdminister, user } = useAuth();
@@ -154,6 +312,7 @@ export function ProjetosListPage() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [editingProject, setEditingProject] = useState<ProjectRow | null>(null);
 
   async function loadData() {
     const [projectsResult, orgsResult, methodologyResult] = await Promise.all([
@@ -350,6 +509,14 @@ export function ProjetosListPage() {
         </form>
       )}
 
+      {canAdminister && editingProject && (
+        <EditProjectPanel
+          project={editingProject}
+          onClose={() => setEditingProject(null)}
+          onSaved={loadData}
+        />
+      )}
+
       {loading && <p>Carregando...</p>}
       {!loading && projects.length === 0 && (
         <div className="empty-state">
@@ -397,10 +564,15 @@ export function ProjetosListPage() {
                 <td>
                   <span className="badge badge-neutral">{STATUS_LABELS[p.status] ?? p.status}</span>
                 </td>
-                <td>
+                <td className="row-actions">
                   <button type="button" className="btn-primary" onClick={() => navigate(`/projetos/${p.id}`)}>
                     Abrir
                   </button>
+                  {canAdminister && (
+                    <button type="button" onClick={() => setEditingProject(p)}>
+                      Editar
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
