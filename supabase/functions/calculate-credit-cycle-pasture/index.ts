@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
     const { data: isAdmin } = await supabase.rpc("is_platform_admin");
     const { data: hasRole } = await supabase.rpc("has_project_role", {
       p_project_id: projectId,
-      p_roles: ["developer", "admin"],
+      p_roles: ["proponent", "developer", "admin"],
     });
     if (!isAdmin && !hasRole) {
       return json({ error: "Sem permissão para calcular o ciclo de créditos deste projeto." }, 403);

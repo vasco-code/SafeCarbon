@@ -17,6 +17,7 @@ import { DescritivoProjetoPage } from "@/modules/projetos/DescritivoProjetoPage"
 import { DocumentosPage } from "@/modules/projetos/DocumentosPage";
 import { CalculoEmissoesRemocoesPage } from "@/modules/projetos/CalculoEmissoesRemocoesPage";
 import { ComercializacaoCreditosPage } from "@/modules/projetos/ComercializacaoCreditosPage";
+import { ProjetoStatusPage } from "@/modules/projetos/ProjetoStatusPage";
 import { DcpEditorPage } from "@/modules/projetos/DcpEditorPage";
 import { ProducaoPage } from "@/modules/producao-comercializacao/ProducaoPage";
 import { ComercializacaoPage } from "@/modules/producao-comercializacao/ComercializacaoPage";
@@ -64,6 +65,7 @@ export function AppRoutes() {
           <Route path="calculo" element={<CalculoEmissoesRemocoesPage />} />
           <Route path="verificacao" element={<VerificacaoPage />} />
           <Route path="comercializacao-creditos" element={<ComercializacaoCreditosPage />} />
+          <Route path="status" element={<ProjetoStatusPage />} />
 
           {/* Rotas antigas — mantidas por compatibilidade (links diretos,
               DCP export) até a migration de afunilamento de RLS (etapa

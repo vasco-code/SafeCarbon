@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useParams, Link } from "react-router-dom";
-import { ArrowLeft, LayoutDashboard, FileText, FolderOpen, Calculator, ShieldCheck, Coins } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, FileText, FolderOpen, Calculator, ShieldCheck, Coins, Flag } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useProjectRole } from "@/hooks/useProjectRole";
 
@@ -72,18 +72,18 @@ export function ProjetoLayout() {
 
   const base = `/projetos/${project.id}`;
 
-  // Navegação simplificada por perfil de acesso: Premix (proponent) e VVB
-  // (verifier) só veem Visão Geral + Descritivo; Verificação é exclusiva de
-  // VVB (só a área de upload) e de developer/admin/platform_admin (ciclo
-  // completo); Documentos/Cálculo/Comercialização de Créditos são só de
-  // developer/admin/platform_admin ('full').
+  // Navegação por perfil de acesso: Premix (proponent) tem acesso equivalente
+  // ao developer/admin/platform_admin ('full') em todas as abas do projeto.
+  // VVB (verifier) segue restrita a Visão Geral + Descritivo + Verificação
+  // (só a área de upload).
   const tabs = [
     { to: base, end: true, icon: LayoutDashboard, label: "Visão Geral", show: true },
     { to: `${base}/descritivo`, icon: FileText, label: "Descritivo do projeto", show: true },
-    { to: `${base}/documentos`, icon: FolderOpen, label: "Documentos", show: accessLevel === "full" },
-    { to: `${base}/calculo`, icon: Calculator, label: "Cálculo das emissões e remoções", show: accessLevel === "full" },
-    { to: `${base}/verificacao`, icon: ShieldCheck, label: "Verificação", show: accessLevel === "full" || accessLevel === "verifier" },
-    { to: `${base}/comercializacao-creditos`, icon: Coins, label: "Comercialização de créditos", show: accessLevel === "full" },
+    { to: `${base}/documentos`, icon: FolderOpen, label: "Documentos", show: accessLevel === "full" || accessLevel === "proponent" },
+    { to: `${base}/calculo`, icon: Calculator, label: "Cálculo das emissões e remoções", show: accessLevel === "full" || accessLevel === "proponent" },
+    { to: `${base}/verificacao`, icon: ShieldCheck, label: "Verificação", show: accessLevel === "full" || accessLevel === "proponent" || accessLevel === "verifier" },
+    { to: `${base}/comercializacao-creditos`, icon: Coins, label: "Comercialização de créditos", show: accessLevel === "full" || accessLevel === "proponent" },
+    { to: `${base}/status`, icon: Flag, label: "Status", show: true },
   ].filter((tab) => tab.show);
 
   return (
