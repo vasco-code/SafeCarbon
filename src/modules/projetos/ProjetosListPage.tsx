@@ -238,6 +238,7 @@ function EditProjectPanel({ project, onClose, onSaved }: { project: ProjectRow; 
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
+            style={{ width: "100%" }}
             placeholder="Resumo curto do projeto — o que ele faz e qual o produto/atividade."
           />
 
@@ -282,7 +283,7 @@ function EditProjectPanel({ project, onClose, onSaved }: { project: ProjectRow; 
           {error && <p className="auth-error">{error}</p>}
 
           <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
-            <button type="button" className="btn-primary" onClick={handleSave} disabled={saving}>
+            <button type="button" className="btn-primary" onClick={handleSave} disabled={saving} style={{ marginTop: 0 }}>
               {saving ? "Salvando..." : "Salvar"}
             </button>
             <button type="button" onClick={onClose} disabled={saving}>
