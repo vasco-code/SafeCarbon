@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileSpreadsheet, CheckCircle2, AlertTriangle } from "lucide-react";
+import { FileSpreadsheet, CheckCircle2, AlertTriangle, ChevronDown } from "lucide-react";
 import { FileDropzone } from "@/components/FileDropzone";
 import { parseGhgWorkbook, readWorkbook, type GhgImportResult } from "@/lib/ghgImport";
 import type { FactorContext } from "./engine/factors";
@@ -33,6 +33,7 @@ export function ImportPlanilhaPanel({
   const gridYears = [...new Set([...ctx.grid.values()].map((g) => g.year))].sort((a, b) => b - a);
   const defaultGridYear = gridYears.find((y) => y <= inventoryYear) ?? gridYears[0] ?? inventoryYear;
 
+  const [expanded, setExpanded] = useState(false);
   const [sector, setSector] = useState<ActivitySector>("energy");
   const [gridYear, setGridYear] = useState<number>(defaultGridYear);
   const [result, setResult] = useState<GhgImportResult | null>(null);
@@ -100,16 +101,43 @@ export function ImportPlanilhaPanel({
 
   return (
     <div className="dcp-section">
-      <h2>
-        <FileSpreadsheet size={18} style={{ verticalAlign: "-3px", marginRight: "0.4rem" }} />
-        Importar planilha GHG Protocol
-      </h2>
-      <p>
-        Envie a planilha oficial preenchida. Lemos as tabelas de dados de atividade das fontes já cobertas e
-        recalculamos com os fatores oficiais — e comparamos com o total da aba Resumo.
-      </p>
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+          background: "none",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          textAlign: "left",
+        }}
+      >
+        <h2 style={{ margin: 0 }}>
+          <FileSpreadsheet size={18} style={{ verticalAlign: "-3px", marginRight: "0.4rem" }} />
+          Importar planilha GHG Protocol
+        </h2>
+        <ChevronDown size={20} style={{ transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "rotate(0deg)", color: "var(--sc-muted)" }} />
+      </button>
 
-      <div className="action-bar">
+      {!expanded && (
+        <p style={{ margin: "0.25rem 0 0", fontSize: "0.8125rem", color: "var(--sc-muted)" }}>
+          Envie a planilha oficial preenchida e recalculamos com os fatores oficiais.
+          {done ? ` ✓ ${done}` : ""}
+        </p>
+      )}
+
+      {expanded && (
+        <>
+          <p>
+            Envie a planilha oficial preenchida. Lemos as tabelas de dados de atividade das fontes já cobertas e
+            recalculamos com os fatores oficiais — e comparamos com o total da aba Resumo.
+          </p>
+
+          <div className="action-bar">
         <div className="action-bar-field">
           <label htmlFor="imp-sector">Setor de atividade (para os fatores de combustão)</label>
           <select id="imp-sector" value={sector} onChange={(e) => setSector(e.target.value as ActivitySector)}>
@@ -236,6 +264,8 @@ export function ImportPlanilhaPanel({
             {busy ? "Importando..." : `Importar ${prepared.length} lançamento(s)`}
           </button>
         </div>
+      )}
+        </>
       )}
     </div>
   );
