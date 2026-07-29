@@ -171,13 +171,21 @@ export function PegadaInventarioPage() {
       </div>
 
       {!readOnly && (
-        <ImportPlanilhaPanel
-          inventoryId={inventoryId!}
-          inventoryYear={header.inventory_year}
-          ctx={ctx}
-          reload={loadEntries}
-        />
+        <div style={{ marginBottom: "1.5rem" }}>
+          <ImportPlanilhaPanel
+            inventoryId={inventoryId!}
+            inventoryYear={header.inventory_year}
+            ctx={ctx}
+            reload={loadEntries}
+          />
+        </div>
       )}
+
+      <p style={{ fontSize: "0.8125rem", color: "var(--sc-muted)", marginTop: 0, marginBottom: "0.75rem" }}>
+        Escolha o escopo e depois a fonte de emissão para lançar os dados — cada fonte tem seu próprio formulário. O
+        número entre parênteses mostra quantos lançamentos já existem naquela fonte; abas com <Lock size={11} style={{ verticalAlign: "-1px" }} /> ainda
+        não estão disponíveis nesta fase.
+      </p>
 
       <nav className="project-tabs" aria-label="Escopo" style={{ marginBottom: "0.75rem" }}>
         {([1, 2, 3] as const).map((scope) => (
