@@ -647,13 +647,6 @@ textarea:focus {
   display: flex;
   gap: 0.35rem;
   justify-content: flex-end;
-  opacity: 0;
-  transition: opacity 120ms ease-out;
-}
-
-.app-main tbody tr:hover .row-actions,
-.app-main tbody tr:focus-within .row-actions {
-  opacity: 1;
 }
 
 .methodology-layout {
