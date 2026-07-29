@@ -532,7 +532,7 @@ export function ProjetosListPage() {
               <th>Desenvolvedor</th>
               <th>Proponente</th>
               <th>Status</th>
-              <th></th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
