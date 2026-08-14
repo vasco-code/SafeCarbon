@@ -130,13 +130,41 @@ export interface ElectricityLocationData {
   year: number;
 }
 
+// Tipo de fonte de geração (aba "En. elétrica (escolha de compra)", Listas
+// Q28:Q34) — as 6 primeiras são renováveis com fator zero; Termoelétrica exige
+// combustível + eficiência da planta para derivar o fator.
+export const GENERATION_TYPES = [
+  "Eólica",
+  "Fotovoltaica",
+  "Heliotérmica",
+  "Geotérmica",
+  "Hidroelétrica",
+  "Termoelétrica",
+  "Maremotriz",
+] as const;
+export type GenerationType = (typeof GENERATION_TYPES)[number];
+export const RENEWABLE_GENERATION_TYPES: readonly GenerationType[] = [
+  "Eólica",
+  "Fotovoltaica",
+  "Heliotérmica",
+  "Geotérmica",
+  "Hidroelétrica",
+  "Maremotriz",
+];
+
 export interface ElectricityMarketData {
   mwh: number;
   // Fator do instrumento contratual (I-REC, gerador específico, mix residual),
   // informado pelo usuário — a planilha aceita "fator fornecido pelo gerador".
-  co2_t_mwh: number;
+  // Quando ausente, o motor deriva o fator de `generation_type` (renovável →
+  // zero; Termoelétrica → combustível/eficiência), como a planilha faz quando
+  // o usuário responde "Não" a "Você possui o fator de emissão?".
+  co2_t_mwh?: number;
   ch4_t_mwh?: number;
   n2o_t_mwh?: number;
+  generation_type?: GenerationType;
+  fuel_ref_no?: number; // só Termoelétrica — ref em ghg_fuel_factors
+  plant_efficiency?: number; // 0-1, só Termoelétrica; planilha não tem default (obrigatório)
 }
 
 // Escopo 2 — Perdas de transmissão/distribuição da eletricidade comprada da
@@ -151,9 +179,13 @@ export interface TdLossesLocationData {
 
 export interface TdLossesMarketData {
   mwh: number; // eletricidade perdida em T&D, oriunda de fonte com instrumento contratual
-  co2_t_mwh: number;
+  // Mesma derivação opcional de ElectricityMarketData — ver ali.
+  co2_t_mwh?: number;
   ch4_t_mwh?: number;
   n2o_t_mwh?: number;
+  generation_type?: GenerationType;
+  fuel_ref_no?: number;
+  plant_efficiency?: number;
 }
 
 // Escopo 2 — Compra de energia térmica/vapor (aba "Compra de Energia

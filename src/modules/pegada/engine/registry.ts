@@ -1,7 +1,7 @@
 import type {
-  ActivityData, CalcResult, Computed, EffluentStage, Scope3GasEntryCategory, SourceCategory,
+  ActivityData, CalcResult, Computed, EffluentStage, GenerationType, Scope3GasEntryCategory, SourceCategory,
 } from "./types";
-import { SCOPE3_GAS_ENTRY_CATEGORIES } from "./types";
+import { RENEWABLE_GENERATION_TYPES, SCOPE3_GAS_ENTRY_CATEGORIES } from "./types";
 import { effluentKey, genericKey, getFleet, getGrid, lulucfKey, mcfOf, type FactorContext } from "./factors";
 
 // Motor de cálculo determinístico, por source_category. Cada função recebe o
@@ -467,6 +467,47 @@ function calcLandUse(data: ActivityData, ctx: FactorContext): CalcResult {
   return calcDirectGasEmission(data, ctx);
 }
 
+// Deriva o fator de emissão (t/MWh) da energia comprada com instrumento
+// contratual quando o usuário NÃO tem o fator do próprio gerador — aba "En.
+// elétrica (escolha de compra)", colunas Y..AB. Fontes renováveis têm fator
+// zero; termoelétricas derivam do combustível informado, convertendo o fator
+// bruto por TJ (setor Energia) para t/MWh de energia térmica de ENTRADA
+// (1 MWh = 0,0036 TJ) e dividindo pela eficiência da planta — dividir a
+// eletricidade COMPRADA (saída) pela eficiência dá a energia de entrada
+// equivalente, exatamente como a planilha faz em AD49 (ver comentário no uso).
+const TJ_PER_MWH = 0.0036;
+
+function deriveMarketFactor(
+  ctx: FactorContext,
+  generationType: GenerationType | undefined,
+  fuelRefNo: number | undefined,
+  plantEfficiency: number | undefined,
+): { co2_t_mwh: number; ch4_t_mwh: number; n2o_t_mwh: number; biogenic_co2_t_mwh: number; ref: string } | { missing: string } {
+  if (!generationType) return { missing: "tipo de fonte de geração" };
+  if (RENEWABLE_GENERATION_TYPES.includes(generationType)) {
+    return { co2_t_mwh: 0, ch4_t_mwh: 0, n2o_t_mwh: 0, biogenic_co2_t_mwh: 0, ref: `generation:${generationType}` };
+  }
+  // Termoelétrica.
+  if (fuelRefNo == null) return { missing: "combustível da termoelétrica" };
+  const fuel = ctx.fuels.get(fuelRefNo);
+  if (!fuel) return { missing: `combustível ref ${fuelRefNo}` };
+  if (fuel.co2_kg_tj == null) return { missing: `fator kg/TJ não disponível para ${fuel.name_pt}` };
+  if (!plantEfficiency || plantEfficiency <= 0) return { missing: "eficiência da planta geradora" };
+
+  const co2PerMwhInput = (fuel.co2_kg_tj * TJ_PER_MWH) / 1000;
+  const ch4PerMwhInput = ((fuel.ch4_kg_tj_energy ?? 0) * TJ_PER_MWH) / 1000;
+  const n2oPerMwhInput = ((fuel.n2o_kg_tj_energy ?? 0) * TJ_PER_MWH) / 1000;
+  // is_biofuel separa fóssil de biogênico, mesmo critério de Combustão
+  // estacionária/móvel — a planilha faz a mesma separação (col. N vs Q).
+  return {
+    co2_t_mwh: (fuel.is_biofuel ? 0 : co2PerMwhInput) / plantEfficiency,
+    ch4_t_mwh: ch4PerMwhInput / plantEfficiency,
+    n2o_t_mwh: n2oPerMwhInput / plantEfficiency,
+    biogenic_co2_t_mwh: (fuel.is_biofuel ? co2PerMwhInput : 0) / plantEfficiency,
+    ref: `generation:termoeletrica:fuel:${fuel.ref_no}`,
+  };
+}
+
 type Calculator = (data: ActivityData, ctx: FactorContext) => CalcResult;
 
 const calculators: Record<SourceCategory, Calculator> = {
@@ -552,16 +593,35 @@ const calculators: Record<SourceCategory, Calculator> = {
   electricity_market(data, ctx) {
     if (data.source_category !== "electricity_market") return { ok: false, missingFactor: "tipo" };
     // Fator informado pelo usuário (instrumento contratual) — em tCO2/MWh etc.
-    const co2 = data.mwh * data.co2_t_mwh;
-    const ch4 = data.mwh * (data.ch4_t_mwh ?? 0);
-    const n2o = data.mwh * (data.n2o_t_mwh ?? 0);
+    // Se ausente, deriva de generation_type/fuel_ref_no/plant_efficiency (o
+    // usuário respondeu "Não" a "Você possui o fator de emissão?").
+    let co2Factor: number;
+    let ch4Factor = data.ch4_t_mwh ?? 0;
+    let n2oFactor = data.n2o_t_mwh ?? 0;
+    let biogenicFactor = 0;
+    let ref: string;
+    if (data.co2_t_mwh != null) {
+      co2Factor = data.co2_t_mwh;
+      ref = "user_supplied_factor";
+    } else {
+      const derived = deriveMarketFactor(ctx, data.generation_type, data.fuel_ref_no, data.plant_efficiency);
+      if ("missing" in derived) return { ok: false, missingFactor: derived.missing };
+      co2Factor = derived.co2_t_mwh;
+      ch4Factor = derived.ch4_t_mwh;
+      n2oFactor = derived.n2o_t_mwh;
+      biogenicFactor = derived.biogenic_co2_t_mwh;
+      ref = derived.ref;
+    }
+    const co2 = data.mwh * co2Factor;
+    const ch4 = data.mwh * ch4Factor;
+    const n2o = data.mwh * n2oFactor;
     const computed: Computed = {
       co2_t: co2,
       ch4_t: ch4,
       n2o_t: n2o,
-      biogenic_co2_t: 0,
+      biogenic_co2_t: data.mwh * biogenicFactor,
       co2e_t: co2eFossil(ctx, co2, ch4, n2o),
-      factor_refs: ["user_supplied_factor"],
+      factor_refs: [ref],
       ar_version: ctx.arVersion,
     };
     return { ok: true, computed };
@@ -589,16 +649,34 @@ const calculators: Record<SourceCategory, Calculator> = {
 
   td_losses_market(data, ctx) {
     if (data.source_category !== "td_losses_market") return { ok: false, missingFactor: "tipo" };
-    const co2 = data.mwh * data.co2_t_mwh;
-    const ch4 = data.mwh * (data.ch4_t_mwh ?? 0);
-    const n2o = data.mwh * (data.n2o_t_mwh ?? 0);
+    // Ver electricity_market — mesma derivação opcional do fator.
+    let co2Factor: number;
+    let ch4Factor = data.ch4_t_mwh ?? 0;
+    let n2oFactor = data.n2o_t_mwh ?? 0;
+    let biogenicFactor = 0;
+    let ref: string;
+    if (data.co2_t_mwh != null) {
+      co2Factor = data.co2_t_mwh;
+      ref = "user_supplied_factor";
+    } else {
+      const derived = deriveMarketFactor(ctx, data.generation_type, data.fuel_ref_no, data.plant_efficiency);
+      if ("missing" in derived) return { ok: false, missingFactor: derived.missing };
+      co2Factor = derived.co2_t_mwh;
+      ch4Factor = derived.ch4_t_mwh;
+      n2oFactor = derived.n2o_t_mwh;
+      biogenicFactor = derived.biogenic_co2_t_mwh;
+      ref = derived.ref;
+    }
+    const co2 = data.mwh * co2Factor;
+    const ch4 = data.mwh * ch4Factor;
+    const n2o = data.mwh * n2oFactor;
     const computed: Computed = {
       co2_t: co2,
       ch4_t: ch4,
       n2o_t: n2o,
-      biogenic_co2_t: 0,
+      biogenic_co2_t: data.mwh * biogenicFactor,
       co2e_t: co2eFossil(ctx, co2, ch4, n2o),
-      factor_refs: ["user_supplied_factor"],
+      factor_refs: [ref],
       ar_version: ctx.arVersion,
     };
     return { ok: true, computed };
