@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { Fragment, useState, type FormEvent } from "react";
 import { LANDFILL_QUALITIES } from "../engine/factors";
 import { calculate } from "../engine/registry";
 import type { SolidWasteMethod } from "../engine/types";
@@ -15,6 +15,17 @@ const METHOD_LABELS: Record<SolidWasteMethod, string> = {
   direct: "Relato direto de CO₂/CH₄/N₂O",
 };
 
+// `composition` fica `undefined` até o usuário clicar em "Personalizar" na
+// linha; a partir daí (mesmo vazio) o ano usa a composição própria em vez do
+// default da fonte — ver LandfillYear em types.ts.
+interface LandfillYearForm {
+  year: string;
+  waste_t: string;
+  quality: string;
+  ch4_recovered_t: string;
+  composition?: Record<string, string>;
+}
+
 export function SolidWasteSource({
   inventoryId,
   ctx,
@@ -29,9 +40,9 @@ export function SolidWasteSource({
   const [method, setMethod] = useState<SolidWasteMethod>("landfill");
   // aterro (FOD)
   const [landfillComp, setLandfillComp] = useState<Record<string, string>>({});
-  const [landfillYears, setLandfillYears] = useState<
-    { year: string; waste_t: string; quality: string; ch4_recovered_t: string }[]
-  >([{ year: String(inventoryYear), waste_t: "", quality: "A", ch4_recovered_t: "" }]);
+  const [landfillYears, setLandfillYears] = useState<LandfillYearForm[]>([
+    { year: String(inventoryYear), waste_t: "", quality: "A", ch4_recovered_t: "", composition: undefined },
+  ]);
   // compostagem
   const [massT, setMassT] = useState("");
   const [efCh4Kg, setEfCh4Kg] = useState("");
@@ -70,12 +81,23 @@ export function SolidWasteSource({
         landfill_composition: comp,
         years: landfillYears
           .filter((y) => y.year !== "" && Number(y.waste_t) >= 0)
-          .map((y) => ({
-            year: Number(y.year),
-            waste_t: Number(y.waste_t) || 0,
-            quality: y.quality,
-            ch4_recovered_t: y.ch4_recovered_t ? Number(y.ch4_recovered_t) : undefined,
-          })),
+          .map((y) => {
+            let yearComp: Record<string, number> | undefined;
+            if (y.composition) {
+              yearComp = {};
+              for (const f of ctx.landfill) {
+                const v = Number(y.composition[f.category]);
+                if (v > 0) yearComp[f.category] = v;
+              }
+            }
+            return {
+              year: Number(y.year),
+              waste_t: Number(y.waste_t) || 0,
+              quality: y.quality,
+              ch4_recovered_t: y.ch4_recovered_t ? Number(y.ch4_recovered_t) : undefined,
+              composition: yearComp,
+            };
+          }),
         biogas_flared: biogasFlared,
       } as const;
     }
@@ -116,9 +138,17 @@ export function SolidWasteSource({
   }
 
   const landfillCompSum = ctx.landfill.reduce((s, f) => s + (Number(landfillComp[f.category]) || 0), 0);
+  // Cada ano com deposição precisa de composição — a própria (se personalizada)
+  // ou a padrão da fonte.
+  const landfillYearsHaveComposition = landfillYears
+    .filter((y) => Number(y.waste_t) > 0)
+    .every((y) => {
+      if (!y.composition) return landfillCompSum > 0;
+      return ctx.landfill.reduce((s, f) => s + (Number(y.composition?.[f.category]) || 0), 0) > 0;
+    });
   const canPreview =
     method === "landfill"
-      ? landfillYears.some((y) => Number(y.waste_t) > 0) && landfillCompSum > 0
+      ? landfillYears.some((y) => Number(y.waste_t) > 0) && landfillYearsHaveComposition
       : method === "composting"
         ? Number(massT) > 0
         : method === "incineration"
@@ -144,7 +174,7 @@ export function SolidWasteSource({
       setError(err);
     } else {
       setLandfillComp({});
-      setLandfillYears([{ year: String(inventoryYear), waste_t: "", quality: "A", ch4_recovered_t: "" }]);
+      setLandfillYears([{ year: String(inventoryYear), waste_t: "", quality: "A", ch4_recovered_t: "", composition: undefined }]);
       setMassT("");
       setEfCh4Kg("");
       setEfN2oKg("");
@@ -206,50 +236,102 @@ export function SolidWasteSource({
                     <th>Resíduo aterrado (t)</th>
                     <th>Qualidade do local</th>
                     <th>CH₄ recuperado (t)</th>
+                    <th>Composição</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {landfillYears.map((row, i) => (
-                    <tr key={i}>
-                      <td>
-                        <input
-                          type="number" step="1" value={row.year}
-                          onChange={(e) => setLandfillYears((rs) => rs.map((r, j) => (j === i ? { ...r, year: e.target.value } : r)))}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number" step="0.01" min="0" value={row.waste_t}
-                          onChange={(e) => setLandfillYears((rs) => rs.map((r, j) => (j === i ? { ...r, waste_t: e.target.value } : r)))}
-                        />
-                      </td>
-                      <td>
-                        <select
-                          value={row.quality}
-                          onChange={(e) => setLandfillYears((rs) => rs.map((r, j) => (j === i ? { ...r, quality: e.target.value } : r)))}
-                        >
-                          {LANDFILL_QUALITIES.map((q) => (
-                            <option key={q.key} value={q.key}>{q.label}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <input
-                          type="number" step="0.0001" min="0" value={row.ch4_recovered_t}
-                          onChange={(e) => setLandfillYears((rs) => rs.map((r, j) => (j === i ? { ...r, ch4_recovered_t: e.target.value } : r)))}
-                        />
-                      </td>
-                      <td className="row-actions">
-                        <button
-                          type="button" className="btn-icon-danger"
-                          onClick={() => setLandfillYears((rs) => (rs.length > 1 ? rs.filter((_, j) => j !== i) : rs))}
-                        >
-                          Remover
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {landfillYears.map((row, i) => {
+                    const yearCompSum = ctx.landfill.reduce(
+                      (s, f) => s + (Number(row.composition?.[f.category]) || 0),
+                      0,
+                    );
+                    return (
+                      <Fragment key={i}>
+                        <tr>
+                          <td>
+                            <input
+                              type="number" step="1" value={row.year}
+                              onChange={(e) => setLandfillYears((rs) => rs.map((r, j) => (j === i ? { ...r, year: e.target.value } : r)))}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number" step="0.01" min="0" value={row.waste_t}
+                              onChange={(e) => setLandfillYears((rs) => rs.map((r, j) => (j === i ? { ...r, waste_t: e.target.value } : r)))}
+                            />
+                          </td>
+                          <td>
+                            <select
+                              value={row.quality}
+                              onChange={(e) => setLandfillYears((rs) => rs.map((r, j) => (j === i ? { ...r, quality: e.target.value } : r)))}
+                            >
+                              {LANDFILL_QUALITIES.map((q) => (
+                                <option key={q.key} value={q.key}>{q.label}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              type="number" step="0.0001" min="0" value={row.ch4_recovered_t}
+                              onChange={(e) => setLandfillYears((rs) => rs.map((r, j) => (j === i ? { ...r, ch4_recovered_t: e.target.value } : r)))}
+                            />
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setLandfillYears((rs) =>
+                                  rs.map((r, j) => (j === i ? { ...r, composition: r.composition ? undefined : {} } : r)),
+                                )
+                              }
+                            >
+                              {row.composition ? "Usar composição padrão" : "Personalizar"}
+                            </button>
+                          </td>
+                          <td className="row-actions">
+                            <button
+                              type="button" className="btn-icon-danger"
+                              onClick={() => setLandfillYears((rs) => (rs.length > 1 ? rs.filter((_, j) => j !== i) : rs))}
+                            >
+                              Remover
+                            </button>
+                          </td>
+                        </tr>
+                        {row.composition && (
+                          <tr>
+                            <td colSpan={6}>
+                              <p style={{ fontSize: "0.8rem", color: "var(--sc-muted)", margin: "0.25rem 0" }}>
+                                Composição do resíduo aterrado em {row.year || "?"} (% de cada categoria). Soma
+                                atual: {fmt(yearCompSum, 1)}%.
+                              </p>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                                {ctx.landfill.map((f) => (
+                                  <div key={f.category} style={{ minWidth: "9rem" }}>
+                                    <label htmlFor={`sw-lfy-${i}-${f.position}`} style={{ fontSize: "0.75rem" }}>
+                                      {f.category} (%)
+                                    </label>
+                                    <input
+                                      id={`sw-lfy-${i}-${f.position}`}
+                                      type="number" step="0.1" min="0" max="100"
+                                      value={row.composition?.[f.category] ?? ""}
+                                      onChange={(e) =>
+                                        setLandfillYears((rs) =>
+                                          rs.map((r, j) =>
+                                            j === i ? { ...r, composition: { ...r.composition, [f.category]: e.target.value } } : r,
+                                          ),
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
 
@@ -258,7 +340,10 @@ export function SolidWasteSource({
                 onClick={() =>
                   setLandfillYears((rs) => {
                     const last = Number(rs[rs.length - 1]?.year) || inventoryYear;
-                    return [...rs, { year: String(last - 1), waste_t: "", quality: rs[rs.length - 1]?.quality ?? "A", ch4_recovered_t: "" }];
+                    return [
+                      ...rs,
+                      { year: String(last - 1), waste_t: "", quality: rs[rs.length - 1]?.quality ?? "A", ch4_recovered_t: "", composition: undefined },
+                    ];
                   })
                 }
               >
@@ -266,8 +351,8 @@ export function SolidWasteSource({
               </button>
 
               <p style={{ fontSize: "0.8rem", color: "var(--sc-muted)", margin: "1rem 0 0.25rem" }}>
-                Composição do resíduo aterrado (% de cada categoria), aplicada a toda a série. Soma
-                atual: {fmt(landfillCompSum, 1)}%.
+                Composição padrão do resíduo aterrado (% de cada categoria) — aplicada aos anos que não
+                tiverem composição própria ("Personalizar" na linha). Soma atual: {fmt(landfillCompSum, 1)}%.
               </p>
               {ctx.landfill.map((f) => (
                 <div key={f.category}>

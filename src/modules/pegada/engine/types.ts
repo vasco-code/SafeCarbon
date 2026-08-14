@@ -362,20 +362,24 @@ export type SolidWasteMethod = "landfill" | "composting" | "incineration" | "dir
 
 // Uma linha da série histórica de deposição no aterro. `quality` é a chave
 // A-H da classificação do local (ver LANDFILL_QUALITIES) — pode variar ano a
-// ano, como na planilha.
+// ano, como na planilha. `composition`, quando informada, vale só para o
+// resíduo depositado NESSE ano (a planilha permite composição variar ano a
+// ano); se ausente, o ano usa `landfill_composition` (o default da fonte).
 export interface LandfillYear {
   year: number;
   waste_t: number;
   quality: string;
   ch4_recovered_t?: number;
+  composition?: Record<string, number>;
 }
 
 export interface SolidWasteData {
   method: SolidWasteMethod;
   // landfill (modelo FOD) — a emissão do ano inventariado depende da série
-  // histórica de deposição, não só do ano corrente. `composition` é única para
-  // toda a série (a planilha admite composição ano a ano; aqui é uma
-  // simplificação deliberada de UI — o resto da matemática é idêntico).
+  // histórica de deposição, não só do ano corrente. `landfill_composition` é o
+  // default aplicado aos anos que não têm `composition` própria (ver
+  // LandfillYear) — cobre tanto o caso simples (uma composição para toda a
+  // série) quanto o caso completo da planilha (composição por ano).
   inventory_year?: number;
   landfill_composition?: Record<string, number>; // categoria aterrada → % (0-100)
   years?: LandfillYear[];

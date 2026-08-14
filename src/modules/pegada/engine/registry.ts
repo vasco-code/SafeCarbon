@@ -279,12 +279,14 @@ function calcSolidWaste(data: ActivityData, ctx: FactorContext): CalcResult {
     const years = (data.years ?? []).filter((y) => Number.isFinite(y.year)).sort((a, b) => a.year - b.year);
     if (years.length === 0) return { ok: false, missingFactor: "série de deposição do aterro" };
     const invYear = data.inventory_year ?? years[years.length - 1].year;
-    const comp = data.landfill_composition ?? {};
+    const defaultComp = data.landfill_composition ?? {};
 
     // Recursão do IPCC, por categoria de resíduo (cada uma com seu k):
     //   DDOCma_T  = DDOCmd_T + DDOCma_{T-1} × e^(-k)
     //   DDOCdec_T = DDOCma_{T-1} × (1 − e^(-k))
     // Percorre a série do ano mais antigo até o ano inventariado, acumulando.
+    // Cada ano usa sua própria composição quando informada (a planilha admite
+    // composição variar ano a ano); senão cai no default da fonte.
     let ch4Generated = 0;
     const ddocma = new Map<string, number>(ctx.landfill.map((f) => [f.category, 0]));
     const firstYear = years[0].year;
@@ -293,6 +295,7 @@ function calcSolidWaste(data: ActivityData, ctx: FactorContext): CalcResult {
     for (let year = firstYear; year <= invYear; year++) {
       const row = byYear.get(year);
       const mcf = row ? mcfOf(row.quality) : 0;
+      const comp = row?.composition ?? defaultComp;
       let decompTotal = 0;
       for (const f of ctx.landfill) {
         const prev = ddocma.get(f.category) ?? 0;
