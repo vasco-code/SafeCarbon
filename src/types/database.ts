@@ -481,6 +481,7 @@ export interface Database {
           activity_data: Record<string, unknown>;
           computed: Record<string, unknown>;
           co2e_t: number | null;
+          period_month: number | null;
           created_at: string;
           updated_at: string;
         };

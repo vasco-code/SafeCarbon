@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { calculate } from "../engine/registry";
 import { GENERATION_TYPES, RENEWABLE_GENERATION_TYPES, type GenerationType } from "../engine/types";
 import { addEntry } from "../entryActions";
-import { EntryTable, fmt, type SourceProps } from "./common";
+import { EntryTable, fmt, PeriodField, type SourceProps } from "./common";
 
 // Mesma derivação de fator que ElectricityMarketSource — ver ali.
 export function TdLossesMarketSource({ inventoryId, ctx, entries, reload, readOnly }: SourceProps) {
@@ -15,6 +15,7 @@ export function TdLossesMarketSource({ inventoryId, ctx, entries, reload, readOn
   const [efficiency, setEfficiency] = useState("");
   const [sourceRef, setSourceRef] = useState("");
   const [description, setDescription] = useState("");
+  const [periodMonth, setPeriodMonth] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -54,7 +55,11 @@ export function TdLossesMarketSource({ inventoryId, ctx, entries, reload, readOn
       return;
     }
     setSubmitting(true);
-    const { error: err } = await addEntry(inventoryId, buildData(), result.computed, { sourceRef, description });
+    const { error: err } = await addEntry(inventoryId, buildData(), result.computed, {
+      sourceRef,
+      description,
+      periodMonth: periodMonth ? Number(periodMonth) : null,
+    });
     setSubmitting(false);
     if (err) setError(err);
     else {
@@ -64,6 +69,7 @@ export function TdLossesMarketSource({ inventoryId, ctx, entries, reload, readOn
       setEfficiency("");
       setSourceRef("");
       setDescription("");
+      setPeriodMonth("");
       setError(null);
       reload();
     }
@@ -128,6 +134,8 @@ export function TdLossesMarketSource({ inventoryId, ctx, entries, reload, readOn
               )}
             </>
           )}
+
+          <PeriodField idPrefix="tdm" value={periodMonth} onChange={setPeriodMonth} />
 
           {preview?.ok && (
             <p className="auth-success">

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { SECTOR_LABELS, type ActivitySector } from "../engine/types";
 import { calculate } from "../engine/registry";
 import { addEntry } from "../entryActions";
-import { EntryTable, fmt, type SourceProps } from "./common";
+import { EntryTable, fmt, PeriodField, type SourceProps } from "./common";
 
 export function MobileCombustionSource({ inventoryId, ctx, entries, reload, readOnly }: SourceProps) {
   const fuels = [...ctx.fuels.values()].sort((a, b) => a.name_pt.localeCompare(b.name_pt));
@@ -13,6 +13,7 @@ export function MobileCombustionSource({ inventoryId, ctx, entries, reload, read
   const [quantity, setQuantity] = useState("");
   const [sourceRef, setSourceRef] = useState("");
   const [description, setDescription] = useState("");
+  const [periodMonth, setPeriodMonth] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,13 +44,18 @@ export function MobileCombustionSource({ inventoryId, ctx, entries, reload, read
       return;
     }
     setSubmitting(true);
-    const { error: err } = await addEntry(inventoryId, buildData(), result.computed, { sourceRef, description });
+    const { error: err } = await addEntry(inventoryId, buildData(), result.computed, {
+      sourceRef,
+      description,
+      periodMonth: periodMonth ? Number(periodMonth) : null,
+    });
     setSubmitting(false);
     if (err) setError(err);
     else {
       setQuantity("");
       setSourceRef("");
       setDescription("");
+      setPeriodMonth("");
       setError(null);
       reload();
     }
@@ -117,6 +123,8 @@ export function MobileCombustionSource({ inventoryId, ctx, entries, reload, read
           )}
           <label htmlFor="mc-qty">Quantidade consumida{selectedFuel ? ` (${selectedFuel.unit})` : ""}</label>
           <input id="mc-qty" type="number" step="0.001" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+
+          <PeriodField idPrefix="mc" value={periodMonth} onChange={setPeriodMonth} />
           {preview?.ok && (
             <p className="auth-success">
               Prévia: {fmt(preview.computed.co2e_t, 4)} tCO₂e

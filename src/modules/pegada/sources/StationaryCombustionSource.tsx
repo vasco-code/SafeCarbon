@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { SECTOR_LABELS, type ActivitySector } from "../engine/types";
 import { calculate } from "../engine/registry";
 import { addEntry } from "../entryActions";
-import { EntryTable, fmt, type SourceProps } from "./common";
+import { EntryTable, fmt, PeriodField, type SourceProps } from "./common";
 
 export function StationaryCombustionSource({ inventoryId, ctx, entries, reload, readOnly }: SourceProps) {
   const fuels = [...ctx.fuels.values()].sort((a, b) => a.name_pt.localeCompare(b.name_pt));
@@ -11,6 +11,7 @@ export function StationaryCombustionSource({ inventoryId, ctx, entries, reload, 
   const [quantity, setQuantity] = useState("");
   const [sourceRef, setSourceRef] = useState("");
   const [description, setDescription] = useState("");
+  const [periodMonth, setPeriodMonth] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,7 +44,7 @@ export function StationaryCombustionSource({ inventoryId, ctx, entries, reload, 
       inventoryId,
       { source_category: "stationary_combustion", fuel_ref_no: Number(fuelRef), quantity: Number(quantity), sector },
       result.computed,
-      { sourceRef, description },
+      { sourceRef, description, periodMonth: periodMonth ? Number(periodMonth) : null },
     );
     setSubmitting(false);
     if (err) {
@@ -52,6 +53,7 @@ export function StationaryCombustionSource({ inventoryId, ctx, entries, reload, 
       setQuantity("");
       setSourceRef("");
       setDescription("");
+      setPeriodMonth("");
       setError(null);
       reload();
     }
@@ -91,6 +93,8 @@ export function StationaryCombustionSource({ inventoryId, ctx, entries, reload, 
 
           <label htmlFor="sc-qty">Quantidade consumida{selectedFuel ? ` (${selectedFuel.unit})` : ""}</label>
           <input id="sc-qty" type="number" step="0.001" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+
+          <PeriodField idPrefix="sc" value={periodMonth} onChange={setPeriodMonth} />
 
           {preview?.ok && (
             <p className="auth-success">

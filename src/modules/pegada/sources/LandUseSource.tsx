@@ -3,7 +3,7 @@ import { GAS_LABELS } from "../engine/gwp";
 import { calculate } from "../engine/registry";
 import { LAND_USE_CATEGORIES, type LandUseMethod } from "../engine/types";
 import { addEntry } from "../entryActions";
-import { EntryTable, fmt, type SourceProps } from "./common";
+import { EntryTable, fmt, PeriodField, type SourceProps } from "./common";
 
 const METHOD_LABELS: Record<LandUseMethod, string> = {
   direct: "Relato direto de CO₂/CH₄/N₂O",
@@ -34,6 +34,7 @@ export function LandUseSource({ inventoryId, ctx, entries, reload, readOnly }: S
 
   const [sourceRef, setSourceRef] = useState("");
   const [desc, setDesc] = useState("");
+  const [periodMonth, setPeriodMonth] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -82,7 +83,11 @@ export function LandUseSource({ inventoryId, ctx, entries, reload, readOnly }: S
       return;
     }
     setSubmitting(true);
-    const { error: err } = await addEntry(inventoryId, data, result.computed, { sourceRef, description: desc });
+    const { error: err } = await addEntry(inventoryId, data, result.computed, {
+      sourceRef,
+      description: desc,
+      periodMonth: periodMonth ? Number(periodMonth) : null,
+    });
     setSubmitting(false);
     if (err) {
       setError(err);
@@ -96,6 +101,7 @@ export function LandUseSource({ inventoryId, ctx, entries, reload, readOnly }: S
       setPerennialWoody(false);
       setSourceRef("");
       setDesc("");
+      setPeriodMonth("");
       setError(null);
       reload();
     }
@@ -197,6 +203,8 @@ export function LandUseSource({ inventoryId, ctx, entries, reload, readOnly }: S
               <input id="lu-bio-rem" type="number" step="0.0001" min="0" value={biogenicRem} onChange={(e) => setBiogenicRem(e.target.value)} />
             </>
           )}
+
+          <PeriodField idPrefix="lu" value={periodMonth} onChange={setPeriodMonth} />
 
           {preview?.ok && (
             <p className="auth-success">

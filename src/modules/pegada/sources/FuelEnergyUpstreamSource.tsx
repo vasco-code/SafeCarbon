@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { calculate } from "../engine/registry";
 import { addEntry } from "../entryActions";
-import { EntryTable, fmt, type SourceProps } from "./common";
+import { EntryTable, fmt, PeriodField, type SourceProps } from "./common";
 
 // Escopo 3 Categoria 3 — WTT (well-to-tank/cradle-to-gate) do combustível já
 // lançado em Combustão estacionária/móvel: a mesma quantidade em GJ, um fator
@@ -12,6 +12,7 @@ export function FuelEnergyUpstreamSource({ inventoryId, ctx, entries, reload, re
   const [gj, setGj] = useState("");
   const [sourceRef, setSourceRef] = useState("");
   const [description, setDescription] = useState("");
+  const [periodMonth, setPeriodMonth] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -36,7 +37,7 @@ export function FuelEnergyUpstreamSource({ inventoryId, ctx, entries, reload, re
       inventoryId,
       { source_category: "fuel_energy_upstream", fuel_key: fuelKey, consumption_gj: Number(gj) },
       result.computed,
-      { sourceRef, description },
+      { sourceRef, description, periodMonth: periodMonth ? Number(periodMonth) : null },
     );
     setSubmitting(false);
     if (err) {
@@ -45,6 +46,7 @@ export function FuelEnergyUpstreamSource({ inventoryId, ctx, entries, reload, re
       setGj("");
       setSourceRef("");
       setDescription("");
+      setPeriodMonth("");
       setError(null);
       reload();
     }
@@ -78,6 +80,8 @@ export function FuelEnergyUpstreamSource({ inventoryId, ctx, entries, reload, re
 
           <label htmlFor="fu-gj">Consumo (GJ, base PCI)</label>
           <input id="fu-gj" type="number" step="0.001" min="0" value={gj} onChange={(e) => setGj(e.target.value)} />
+
+          <PeriodField idPrefix="fu" value={periodMonth} onChange={setPeriodMonth} />
 
           {preview?.ok && <p className="auth-success">Prévia: {fmt(preview.computed.co2e_t, 4)} tCO₂e</p>}
           {error && <p className="auth-error">{error}</p>}

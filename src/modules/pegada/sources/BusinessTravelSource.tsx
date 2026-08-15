@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { calculate } from "../engine/registry";
 import { addEntry } from "../entryActions";
-import { EntryTable, fmt, type SourceProps } from "./common";
+import { EntryTable, fmt, PeriodField, type SourceProps } from "./common";
 
 export function BusinessTravelSource({ inventoryId, ctx, entries, reload, readOnly }: SourceProps) {
   const options = [...ctx.generic.values()].filter((g) => g.source_category === "business_travel");
@@ -9,6 +9,7 @@ export function BusinessTravelSource({ inventoryId, ctx, entries, reload, readOn
   const [distance, setDistance] = useState("");
   const [sourceRef, setSourceRef] = useState("");
   const [description, setDescription] = useState("");
+  const [periodMonth, setPeriodMonth] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -33,7 +34,7 @@ export function BusinessTravelSource({ inventoryId, ctx, entries, reload, readOn
       inventoryId,
       { source_category: "business_travel", factor_key: factorKey, distance_km: Number(distance) },
       result.computed,
-      { sourceRef, description },
+      { sourceRef, description, periodMonth: periodMonth ? Number(periodMonth) : null },
     );
     setSubmitting(false);
     if (err) setError(err);
@@ -41,6 +42,7 @@ export function BusinessTravelSource({ inventoryId, ctx, entries, reload, readOn
       setDistance("");
       setSourceRef("");
       setDescription("");
+      setPeriodMonth("");
       setError(null);
       reload();
     }
@@ -68,6 +70,7 @@ export function BusinessTravelSource({ inventoryId, ctx, entries, reload, readOn
           </select>
           <label htmlFor="bt-dist">Distância total (passageiro.km)</label>
           <input id="bt-dist" type="number" step="0.1" min="0" value={distance} onChange={(e) => setDistance(e.target.value)} />
+          <PeriodField idPrefix="bt" value={periodMonth} onChange={setPeriodMonth} />
           {preview?.ok && <p className="auth-success">Prévia: {fmt(preview.computed.co2e_t, 4)} tCO₂e</p>}
           {error && <p className="auth-error">{error}</p>}
           <button type="submit" className="btn-primary" disabled={submitting}>

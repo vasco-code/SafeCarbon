@@ -3,7 +3,7 @@ import { LANDFILL_QUALITIES } from "../engine/factors";
 import { calculate } from "../engine/registry";
 import type { SolidWasteMethod } from "../engine/types";
 import { addEntry } from "../entryActions";
-import { EntryTable, fmt, type SourceProps } from "./common";
+import { EntryTable, fmt, PeriodField, type SourceProps } from "./common";
 
 // Resíduos sólidos (Escopo 1): aterro (modelo FOD, com série histórica de
 // deposição), compostagem, incineração e relato direto. Ver calcSolidWaste.
@@ -62,6 +62,7 @@ export function SolidWasteSource({
 
   const [sourceRef, setSourceRef] = useState("");
   const [desc, setDesc] = useState("");
+  const [periodMonth, setPeriodMonth] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -168,7 +169,11 @@ export function SolidWasteSource({
       return;
     }
     setSubmitting(true);
-    const { error: err } = await addEntry(inventoryId, buildData(), result.computed, { sourceRef, description: desc });
+    const { error: err } = await addEntry(inventoryId, buildData(), result.computed, {
+      sourceRef,
+      description: desc,
+      periodMonth: method === "landfill" || !periodMonth ? null : Number(periodMonth),
+    });
     setSubmitting(false);
     if (err) {
       setError(err);
@@ -190,6 +195,7 @@ export function SolidWasteSource({
       setBioCo2("");
       setSourceRef("");
       setDesc("");
+      setPeriodMonth("");
       setError(null);
       reload();
     }
@@ -438,6 +444,8 @@ export function SolidWasteSource({
               <input id="sw-bio" type="number" step="0.0001" min="0" value={bioCo2} onChange={(e) => setBioCo2(e.target.value)} />
             </>
           )}
+
+          {method !== "landfill" && <PeriodField idPrefix="sw" value={periodMonth} onChange={setPeriodMonth} />}
 
           {preview?.ok && (
             <p className="auth-success">

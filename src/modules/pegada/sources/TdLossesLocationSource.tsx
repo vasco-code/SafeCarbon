@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { calculate } from "../engine/registry";
 import { getGrid } from "../engine/factors";
 import { addEntry } from "../entryActions";
-import { EntryTable, fmt, type SourceProps } from "./common";
+import { EntryTable, fmt, PeriodField, type SourceProps } from "./common";
 
 export function TdLossesLocationSource({
   inventoryId,
@@ -16,6 +16,7 @@ export function TdLossesLocationSource({
   const [mwh, setMwh] = useState("");
   const [sourceRef, setSourceRef] = useState("");
   const [description, setDescription] = useState("");
+  const [periodMonth, setPeriodMonth] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -39,7 +40,7 @@ export function TdLossesLocationSource({
       inventoryId,
       { source_category: "td_losses_location", mwh: Number(mwh), year: Number(year) },
       result.computed,
-      { sourceRef, description },
+      { sourceRef, description, periodMonth: periodMonth ? Number(periodMonth) : null },
     );
     setSubmitting(false);
     if (err) setError(err);
@@ -47,6 +48,7 @@ export function TdLossesLocationSource({
       setMwh("");
       setSourceRef("");
       setDescription("");
+      setPeriodMonth("");
       setError(null);
       reload();
     }
@@ -76,6 +78,7 @@ export function TdLossesLocationSource({
           )}
           <label htmlFor="tdl-mwh">Eletricidade perdida em T&D (MWh)</label>
           <input id="tdl-mwh" type="number" step="0.001" min="0" value={mwh} onChange={(e) => setMwh(e.target.value)} />
+          <PeriodField idPrefix="tdl" value={periodMonth} onChange={setPeriodMonth} />
           {preview?.ok && <p className="auth-success">Prévia: {fmt(preview.computed.co2e_t, 4)} tCO₂e</p>}
           {error && <p className="auth-error">{error}</p>}
           <button type="submit" className="btn-primary" disabled={submitting}>

@@ -7,10 +7,11 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { loadFactorContext, type FactorContext } from "./engine/factors";
-import { aggregate, type InventoryEntry } from "./engine/aggregate";
+import { aggregate, groupByMonth, type InventoryEntry } from "./engine/aggregate";
 import type { Scope3GasEntryCategory, SourceCategory } from "./engine/types";
 import { SCOPE3_GAS_ENTRY_CATEGORIES } from "./engine/types";
 import { SOURCES, SCOPE_LABELS } from "./sources";
+import { MONTH_LABELS } from "./sources/common";
 import type { Entry } from "./entryActions";
 import { StationaryCombustionSource } from "./sources/StationaryCombustionSource";
 import { MobileCombustionSource } from "./sources/MobileCombustionSource";
@@ -101,7 +102,7 @@ export function PegadaInventarioPage() {
     if (!inventoryId) return;
     const { data } = await supabase
       .from("ghg_activity_entries")
-      .select("id, source_category, source_ref, description, activity_data, computed")
+      .select("id, source_category, source_ref, description, activity_data, computed, period_month")
       .eq("inventory_id", inventoryId)
       .order("created_at", { ascending: true });
     setEntries((data as unknown as Entry[]) ?? []);
@@ -124,6 +125,17 @@ export function PegadaInventarioPage() {
   }, [inventoryId]);
 
   const totals = useMemo(() => aggregate(entries as unknown as InventoryEntry[]), [entries]);
+  const monthlyRows = useMemo(() => {
+    const groups = groupByMonth(entries as unknown as InventoryEntry[]);
+    const rows = Array.from({ length: 12 }, (_, i) => {
+      const month = i + 1;
+      const t = aggregate(groups.get(month) ?? []);
+      return { label: MONTH_LABELS[i], ...t };
+    });
+    const unassigned = groups.get(null);
+    if (unassigned) rows.push({ label: "Não informado", ...aggregate(unassigned) });
+    return rows;
+  }, [entries]);
 
   if (loading) return <p>Carregando...</p>;
   if (!header) {
@@ -176,6 +188,36 @@ export function PegadaInventarioPage() {
           sub={`CO₂ biogênico à parte: +${totals.biogenicCo2.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} / -${totals.biogenicCo2Removals.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} t`}
         />
       </div>
+
+      {entries.length > 0 && (
+        <div style={{ marginBottom: "1.5rem" }}>
+          <h2 style={{ fontSize: "1rem" }}>Evolução mensal</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th>Escopo 1 (tCO₂e)</th>
+                <th>Escopo 2 (tCO₂e)</th>
+                <th>Escopo 3 (tCO₂e)</th>
+                <th>Total (tCO₂e)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {monthlyRows
+                .filter((r) => r.total > 0)
+                .map((r) => (
+                  <tr key={r.label}>
+                    <td>{r.label}</td>
+                    <td>{r.byScope[1].toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
+                    <td>{r.byScope[2].toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
+                    <td>{r.byScope[3].toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
+                    <td>{r.total.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {!readOnly && (
         <div style={{ marginBottom: "1.5rem" }}>

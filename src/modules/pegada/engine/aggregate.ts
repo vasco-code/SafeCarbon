@@ -9,6 +9,7 @@ export interface InventoryEntry {
   description: string | null;
   activity_data: Record<string, unknown>;
   computed: Computed;
+  period_month: number | null;
 }
 
 export interface InventoryTotals {
@@ -47,4 +48,17 @@ export function aggregate(entries: InventoryEntry[]): InventoryTotals {
     biogenicCo2Removals,
     byGas,
   };
+}
+
+// Agrupa por mês para relatórios de evolução/subperíodo. Chave `null` reúne
+// os lançamentos sem período informado ("ano inteiro"/não classificado).
+export function groupByMonth(entries: InventoryEntry[]): Map<number | null, InventoryEntry[]> {
+  const groups = new Map<number | null, InventoryEntry[]>();
+  for (const e of entries) {
+    const key = e.period_month ?? null;
+    const group = groups.get(key);
+    if (group) group.push(e);
+    else groups.set(key, [e]);
+  }
+  return groups;
 }

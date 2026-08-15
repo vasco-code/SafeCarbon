@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { calculate } from "../engine/registry";
 import { addEntry } from "../entryActions";
-import { EntryTable, fmt, type SourceProps } from "./common";
+import { EntryTable, fmt, PeriodField, type SourceProps } from "./common";
 
 const METHOD_LABELS: Record<"generic" | "private_vehicle", string> = {
   generic: "Transporte coletivo (metrô/trem, ônibus, balsa)",
@@ -25,6 +25,7 @@ export function CommutingSource({ inventoryId, ctx, entries, reload, readOnly }:
 
   const [sourceRef, setSourceRef] = useState("");
   const [description, setDescription] = useState("");
+  const [periodMonth, setPeriodMonth] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -71,7 +72,11 @@ export function CommutingSource({ inventoryId, ctx, entries, reload, readOnly }:
       return;
     }
     setSubmitting(true);
-    const { error: err } = await addEntry(inventoryId, data, result.computed, { sourceRef, description });
+    const { error: err } = await addEntry(inventoryId, data, result.computed, {
+      sourceRef,
+      description,
+      periodMonth: periodMonth ? Number(periodMonth) : null,
+    });
     setSubmitting(false);
     if (err) setError(err);
     else {
@@ -79,6 +84,7 @@ export function CommutingSource({ inventoryId, ctx, entries, reload, readOnly }:
       setQuantity("");
       setSourceRef("");
       setDescription("");
+      setPeriodMonth("");
       setError(null);
       reload();
     }
@@ -160,6 +166,8 @@ export function CommutingSource({ inventoryId, ctx, entries, reload, readOnly }:
               <input id="cm-qty" type="number" step="0.001" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
             </>
           )}
+
+          <PeriodField idPrefix="cm" value={periodMonth} onChange={setPeriodMonth} />
 
           {preview?.ok && (
             <p className="auth-success">

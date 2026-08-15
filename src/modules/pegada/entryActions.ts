@@ -8,7 +8,7 @@ export async function addEntry(
   inventoryId: string,
   data: ActivityData,
   computed: Computed,
-  opts: { sourceRef?: string; description?: string },
+  opts: { sourceRef?: string; description?: string; periodMonth?: number | null },
 ): Promise<{ error: string | null }> {
   const scope: Scope = SCOPE_OF_SOURCE[data.source_category];
   const { source_category, ...activity } = data;
@@ -20,6 +20,7 @@ export async function addEntry(
     description: opts.description ?? null,
     activity_data: activity as Record<string, unknown>,
     computed: computed as unknown as Record<string, unknown>,
+    period_month: opts.periodMonth ?? null,
   });
   return { error: error?.message ?? null };
 }
@@ -27,10 +28,10 @@ export async function addEntry(
 // Insert em lote (import da planilha) — uma chamada só, não N inserts.
 export async function addEntriesBatch(
   inventoryId: string,
-  items: { data: ActivityData; computed: Computed; sourceRef?: string; description?: string }[],
+  items: { data: ActivityData; computed: Computed; sourceRef?: string; description?: string; periodMonth?: number | null }[],
 ): Promise<{ error: string | null; inserted: number }> {
   if (items.length === 0) return { error: null, inserted: 0 };
-  const payload = items.map(({ data, computed, sourceRef, description }) => {
+  const payload = items.map(({ data, computed, sourceRef, description, periodMonth }) => {
     const { source_category, ...activity } = data;
     return {
       inventory_id: inventoryId,
@@ -40,6 +41,7 @@ export async function addEntriesBatch(
       description: description || null,
       activity_data: activity as Record<string, unknown>,
       computed: computed as unknown as Record<string, unknown>,
+      period_month: periodMonth ?? null,
     };
   });
   const { error } = await supabase.from("ghg_activity_entries").insert(payload);
@@ -58,4 +60,5 @@ export interface Entry {
   description: string | null;
   activity_data: Record<string, unknown>;
   computed: Computed;
+  period_month: number | null;
 }

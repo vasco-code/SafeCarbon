@@ -3,7 +3,7 @@ import { GAS_LABELS } from "../engine/gwp";
 import { calculate } from "../engine/registry";
 import type { FugitiveMethod } from "../engine/types";
 import { addEntry } from "../entryActions";
-import { EntryTable, fmt, type SourceProps } from "./common";
+import { EntryTable, fmt, PeriodField, type SourceProps } from "./common";
 
 // Emissões fugitivas (Escopo 1) — RAC (refrigeração/ar-condicionado),
 // extintores e SF6/NF3. Três métodos, todos reduzindo a uma massa líquida de
@@ -68,6 +68,7 @@ export function FugitiveSource({ inventoryId, ctx, entries, reload, readOnly }: 
   const [fields, setFields] = useState<Record<string, string>>({});
   const [sourceRef, setSourceRef] = useState("");
   const [desc, setDesc] = useState("");
+  const [periodMonth, setPeriodMonth] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -103,6 +104,7 @@ export function FugitiveSource({ inventoryId, ctx, entries, reload, readOnly }: 
     const { error: err } = await addEntry(inventoryId, buildData(), result.computed, {
       sourceRef,
       description: desc,
+      periodMonth: periodMonth ? Number(periodMonth) : null,
     });
     setSubmitting(false);
     if (err) {
@@ -111,6 +113,7 @@ export function FugitiveSource({ inventoryId, ctx, entries, reload, readOnly }: 
       setFields({});
       setSourceRef("");
       setDesc("");
+      setPeriodMonth("");
       setError(null);
       reload();
     }
@@ -182,6 +185,8 @@ export function FugitiveSource({ inventoryId, ctx, entries, reload, readOnly }: 
               />
             </div>
           ))}
+
+          <PeriodField idPrefix="fg" value={periodMonth} onChange={setPeriodMonth} />
 
           {preview?.ok && (
             <p className="auth-success">Prévia: {fmt(preview.computed.co2e_t, 4)} tCO₂e</p>

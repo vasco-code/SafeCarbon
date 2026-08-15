@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { calculate } from "../engine/registry";
 import type { EffluentMethod } from "../engine/types";
 import { addEntry } from "../entryActions";
-import { EntryTable, fmt, type SourceProps } from "./common";
+import { EntryTable, fmt, PeriodField, type SourceProps } from "./common";
 
 // Efluentes (Escopo 1). Dois métodos: cálculo detalhado (metodologia IPCC, com
 // até três etapas — tratamento, tratamento sequencial e disposição final) e
@@ -164,6 +164,7 @@ export function EffluentSource({ inventoryId, ctx, entries, reload, readOnly }: 
 
   const [sourceRef, setSourceRef] = useState("");
   const [desc, setDesc] = useState("");
+  const [periodMonth, setPeriodMonth] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -220,7 +221,11 @@ export function EffluentSource({ inventoryId, ctx, entries, reload, readOnly }: 
       return;
     }
     setSubmitting(true);
-    const { error: err } = await addEntry(inventoryId, buildData(), result.computed, { sourceRef, description: desc });
+    const { error: err } = await addEntry(inventoryId, buildData(), result.computed, {
+      sourceRef,
+      description: desc,
+      periodMonth: periodMonth ? Number(periodMonth) : null,
+    });
     setSubmitting(false);
     if (err) {
       setError(err);
@@ -242,6 +247,7 @@ export function EffluentSource({ inventoryId, ctx, entries, reload, readOnly }: 
       setBioCo2("");
       setSourceRef("");
       setDesc("");
+      setPeriodMonth("");
       setError(null);
       reload();
     }
@@ -390,6 +396,8 @@ export function EffluentSource({ inventoryId, ctx, entries, reload, readOnly }: 
               <input id="ef-bio" type="number" step="0.0001" min="0" value={bioCo2} onChange={(e) => setBioCo2(e.target.value)} />
             </>
           )}
+
+          <PeriodField idPrefix="ef" value={periodMonth} onChange={setPeriodMonth} />
 
           {preview?.ok && (
             <p className="auth-success">

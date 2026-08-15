@@ -1,7 +1,8 @@
 import { AR_VERSION } from "./engine/gwp";
-import { aggregate, type InventoryEntry } from "./engine/aggregate";
+import { aggregate, groupByMonth, type InventoryEntry } from "./engine/aggregate";
 import type { Scope } from "./engine/types";
 import { SCOPE_LABELS, SOURCES } from "./sources";
+import { MONTH_LABELS } from "./sources/common";
 
 // Relatório do inventário exportável. Segue o mesmo padrão de export do DCP
 // (HTML servido como application/msword) — abre no Word/Docs e imprime em PDF,
@@ -104,6 +105,37 @@ export function buildInventoryReportHtml(inventory: ReportInventory, entries: In
   <tr><td>CH₄</td><td align="right">${fmt(totals.byGas.ch4)}</td></tr>
   <tr><td>N₂O</td><td align="right">${fmt(totals.byGas.n2o)}</td></tr>
 </table>
+
+${(() => {
+    const groups = groupByMonth(entries);
+    const rows = Array.from({ length: 12 }, (_, i) => {
+      const t = aggregate(groups.get(i + 1) ?? []);
+      return { label: MONTH_LABELS[i], ...t };
+    });
+    const unassigned = groups.get(null);
+    if (unassigned) rows.push({ label: "Não informado", ...aggregate(unassigned) });
+    const filled = rows.filter((r) => r.total > 0);
+    if (filled.length === 0) return "";
+    const monthRows = filled
+      .map(
+        (r) => `<tr>
+          <td>${esc(r.label)}</td>
+          <td align="right">${fmt(r.byScope[1])}</td>
+          <td align="right">${fmt(r.byScope[2])}</td>
+          <td align="right">${fmt(r.byScope[3])}</td>
+          <td align="right">${fmt(r.total)}</td>
+        </tr>`,
+      )
+      .join("");
+    return `<h3>Evolução mensal</h3>
+      <table border="1" cellspacing="0" cellpadding="4">
+        <tr bgcolor="#eeeeee">
+          <th align="left">Mês</th><th align="right">Escopo 1</th><th align="right">Escopo 2</th>
+          <th align="right">Escopo 3</th><th align="right">Total (tCO₂e)</th>
+        </tr>
+        ${monthRows}
+      </table>`;
+  })()}
 
 <h3>CO₂ biogênico (reportado à parte)</h3>
 <p>

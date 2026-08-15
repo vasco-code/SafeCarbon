@@ -3,7 +3,7 @@ import { GAS_LABELS } from "../engine/gwp";
 import { calculate } from "../engine/registry";
 import type { Scope3GasEntryCategory } from "../engine/types";
 import { addEntry } from "../entryActions";
-import { EntryTable, fmt, type SourceProps } from "./common";
+import { EntryTable, fmt, PeriodField, type SourceProps } from "./common";
 
 // Componente compartilhado por todas as fontes que usam entrada direta por gás
 // (massa do gás × GWP): Processos industriais e Agricultura no Escopo 1, e as
@@ -44,6 +44,7 @@ export function DirectGasEmissionSource({
   const [biogenicRem, setBiogenicRem] = useState("");
   const [sourceRef, setSourceRef] = useState("");
   const [desc, setDesc] = useState("");
+  const [periodMonth, setPeriodMonth] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -74,6 +75,7 @@ export function DirectGasEmissionSource({
     const { error: err } = await addEntry(inventoryId, buildData(), result.computed, {
       sourceRef,
       description: desc,
+      periodMonth: periodMonth ? Number(periodMonth) : null,
     });
     setSubmitting(false);
     if (err) {
@@ -84,6 +86,7 @@ export function DirectGasEmissionSource({
       setBiogenicRem("");
       setSourceRef("");
       setDesc("");
+      setPeriodMonth("");
       setError(null);
       reload();
     }
@@ -119,6 +122,8 @@ export function DirectGasEmissionSource({
 
           <label htmlFor="dg-bio-rem">CO₂ biogênico removido/absorvido (t, opcional)</label>
           <input id="dg-bio-rem" type="number" step="0.0001" min="0" value={biogenicRem} onChange={(e) => setBiogenicRem(e.target.value)} />
+
+          <PeriodField idPrefix="dg" value={periodMonth} onChange={setPeriodMonth} />
 
           {preview?.ok && (
             <p className="auth-success">
