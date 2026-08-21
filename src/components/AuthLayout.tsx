@@ -39,6 +39,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
             </div>
           ))}
         </div>
+        <div style={{ fontSize: "0.75rem", opacity: 0.6, marginTop: "1.5rem" }}>Versão {__APP_VERSION__}</div>
       </div>
       <div className="auth-layout-form">
         <div className="auth-layout-form-inner">
