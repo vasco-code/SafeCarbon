@@ -158,7 +158,7 @@ export function DcpEditorPage() {
       return;
     }
 
-    const [stepsResult, batchResult, inventoryResult, leakageResult, nfeResult] = await Promise.all([
+    const [stepsResult, batchResult, inventoryResult, leakageResult, nfeResult, sitesResult] = await Promise.all([
       supabase
         .from("credit_calculation_steps")
         .select("step_number, step_key, output_value, unit")
@@ -171,7 +171,7 @@ export function DcpEditorPage() {
         .maybeSingle(),
       supabase
         .from("emission_inventory_entries")
-        .select("source_type, activity_quantity, activity_unit, calculated_tco2e")
+        .select("source_type, activity_quantity, activity_unit, calculated_tco2e, site_id")
         .eq("project_id", projectId)
         .eq("period_year", periodYear),
       supabase
@@ -186,6 +186,7 @@ export function DcpEditorPage() {
         .gte("issue_date", `${periodYear}-01-01`)
         .lte("issue_date", `${periodYear}-12-31`)
         .order("issue_date"),
+      supabase.from("project_sites").select("id, label").eq("project_id", projectId),
     ]);
 
     const steps = stepsResult.data ?? [];
@@ -193,6 +194,7 @@ export function DcpEditorPage() {
     const inventory = inventoryResult.data ?? [];
     const leakage = leakageResult.data ?? [];
     const nfeDocs = nfeResult.data ?? [];
+    const sites = sitesResult.data ?? [];
 
     const calculoTexto = [
       `Ciclo ${year} — cálculo gerado automaticamente a partir do motor de cálculo (nunca digitado à mão).`,
@@ -214,11 +216,30 @@ export function DcpEditorPage() {
       : "Nenhuma avaliação de vazamento registrada para este período.";
 
     const totalInventario = inventory.reduce((sum, e) => sum + Number(e.calculated_tco2e), 0);
+    const NO_SITE_LABEL = "Projeto, sem local específico";
+    const siteLabel = (siteId: string | null) => sites.find((s) => s.id === siteId)?.label ?? NO_SITE_LABEL;
+    const inventoryBySite = new Map<string, typeof inventory>();
+    for (const e of inventory) {
+      const key = siteLabel(e.site_id);
+      inventoryBySite.set(key, [...(inventoryBySite.get(key) ?? []), e]);
+    }
+    const siteGroups = [...inventoryBySite.entries()].sort((a, b) => {
+      if (a[0] === NO_SITE_LABEL) return 1;
+      if (b[0] === NO_SITE_LABEL) return -1;
+      return a[0].localeCompare(b[0], "pt-BR");
+    });
     const anexoInventarioTexto = [
-      ...inventory.map(
-        (e) =>
-          `${e.source_type}: ${Number(e.activity_quantity).toLocaleString("pt-BR")} ${e.activity_unit} -> ${Number(e.calculated_tco2e).toLocaleString("pt-BR", { maximumFractionDigits: 4 })} tCO2e`,
-      ),
+      ...siteGroups.flatMap(([label, group]) => {
+        const subtotal = group.reduce((sum, e) => sum + Number(e.calculated_tco2e), 0);
+        return [
+          `${label}:`,
+          ...group.map(
+            (e) =>
+              `  ${e.source_type}: ${Number(e.activity_quantity).toLocaleString("pt-BR")} ${e.activity_unit} -> ${Number(e.calculated_tco2e).toLocaleString("pt-BR", { maximumFractionDigits: 4 })} tCO2e`,
+          ),
+          `  Subtotal ${label}: ${subtotal.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} tCO2e`,
+        ];
+      }),
       `Total: ${totalInventario.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} tCO2e`,
     ].join("\n");
 

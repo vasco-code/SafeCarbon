@@ -17,7 +17,15 @@ interface InventoryEntry {
   activity_unit: string;
   calculated_tco2e: number;
   justification: string | null;
+  site_id: string | null;
 }
+
+interface ProjectSite {
+  id: string;
+  label: string;
+}
+
+const NO_SITE_LABEL = "Projeto (sem local específico)";
 
 type SourceType = "biomass_combustion" | "diesel_transport" | "electricity";
 
@@ -31,8 +39,10 @@ export function InventarioPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [factors, setFactors] = useState<EmissionFactor[]>([]);
   const [entries, setEntries] = useState<InventoryEntry[]>([]);
+  const [sites, setSites] = useState<ProjectSite[]>([]);
   const [periodYear, setPeriodYear] = useState(String(new Date().getFullYear()));
   const [sourceType, setSourceType] = useState<SourceType>("biomass_combustion");
+  const [siteId, setSiteId] = useState("");
   const [activityQuantity, setActivityQuantity] = useState("");
   const [justification, setJustification] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,16 +50,18 @@ export function InventarioPage() {
 
   async function loadData() {
     if (!projectId) return;
-    const [factorsResult, entriesResult] = await Promise.all([
+    const [factorsResult, entriesResult, sitesResult] = await Promise.all([
       supabase.from("emission_factors").select("id, category, value"),
       supabase
         .from("emission_inventory_entries")
-        .select("id, period_year, source_type, activity_quantity, activity_unit, calculated_tco2e, justification")
+        .select("id, period_year, source_type, activity_quantity, activity_unit, calculated_tco2e, justification, site_id")
         .eq("project_id", projectId)
         .order("period_year", { ascending: false }),
+      supabase.from("project_sites").select("id, label").eq("project_id", projectId).order("label"),
     ]);
     setFactors(factorsResult.data ?? []);
     setEntries(entriesResult.data ?? []);
+    setSites(sitesResult.data ?? []);
   }
 
   useEffect(() => {
@@ -128,6 +140,7 @@ export function InventarioPage() {
         emission_factor_ids: [],
         calculated_tco2e: 0,
         justification,
+        site_id: siteId || null,
       });
       setSubmitting(false);
       if (error) {
@@ -155,6 +168,7 @@ export function InventarioPage() {
       emission_factor_ids: preview.factorIds,
       calculated_tco2e: preview.tco2e,
       justification: justification || null,
+      site_id: siteId || null,
     });
     setSubmitting(false);
     if (error) {
@@ -178,6 +192,24 @@ export function InventarioPage() {
 
   const totalTco2e = entries.reduce((sum, e) => sum + e.calculated_tco2e, 0);
 
+  function siteLabel(id: string | null) {
+    if (!id) return NO_SITE_LABEL;
+    return sites.find((s) => s.id === id)?.label ?? NO_SITE_LABEL;
+  }
+
+  const totalsBySite = (() => {
+    const map = new Map<string, number>();
+    for (const e of entries) {
+      const key = siteLabel(e.site_id);
+      map.set(key, (map.get(key) ?? 0) + e.calculated_tco2e);
+    }
+    return [...map.entries()].sort((a, b) => {
+      if (a[0] === NO_SITE_LABEL) return 1;
+      if (b[0] === NO_SITE_LABEL) return -1;
+      return a[0].localeCompare(b[0], "pt-BR");
+    });
+  })();
+
   return (
     <section>
       <h2 className="module-heading">
@@ -194,6 +226,16 @@ export function InventarioPage() {
           {Object.entries(SOURCE_LABELS).map(([key, label]) => (
             <option key={key} value={key}>
               {label}
+            </option>
+          ))}
+        </select>
+
+        <label htmlFor="inv-site">Local</label>
+        <select id="inv-site" value={siteId} onChange={(e) => setSiteId(e.target.value)}>
+          <option value="">{NO_SITE_LABEL}</option>
+          {sites.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label}
             </option>
           ))}
         </select>
@@ -243,6 +285,7 @@ export function InventarioPage() {
             <tr>
               <th>Ano</th>
               <th>Fonte</th>
+              <th>Local</th>
               <th>Quantidade</th>
               <th>tCO₂e</th>
               <th>Justificativa</th>
@@ -254,6 +297,7 @@ export function InventarioPage() {
               <tr key={e.id}>
                 <td>{e.period_year}</td>
                 <td>{SOURCE_LABELS[e.source_type as SourceType] ?? e.source_type}</td>
+                <td>{siteLabel(e.site_id)}</td>
                 <td>
                   {e.activity_quantity.toLocaleString("pt-BR")} {e.activity_unit}
                 </td>
@@ -268,6 +312,28 @@ export function InventarioPage() {
             ))}
           </tbody>
         </table>
+      )}
+
+      {totalsBySite.length > 0 && (
+        <>
+          <h2>Total por local</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Local</th>
+                <th>tCO₂e</th>
+              </tr>
+            </thead>
+            <tbody>
+              {totalsBySite.map(([label, total]) => (
+                <tr key={label}>
+                  <td>{label}</td>
+                  <td>{total.toLocaleString("pt-BR", { maximumFractionDigits: 4 })}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       )}
     </section>
   );

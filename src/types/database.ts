@@ -175,6 +175,7 @@ export interface Database {
           emission_factor_ids: string[];
           calculated_tco2e: number;
           justification: string | null;
+          site_id: string | null;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["emission_inventory_entries"]["Row"]>;
