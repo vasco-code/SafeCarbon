@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useParams, Link } from "react-router-dom";
-import { ArrowLeft, LayoutDashboard, FileText, FolderOpen, Calculator, ShieldCheck, Coins, Flag } from "lucide-react";
+import { ArrowLeft, FileText, FolderOpen, Calculator, ShieldCheck, Coins, Flag } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useProjectRole } from "@/hooks/useProjectRole";
 
@@ -74,10 +74,9 @@ export function ProjetoLayout() {
 
   // Navegação por perfil de acesso: Premix (proponent) tem acesso equivalente
   // ao developer/admin/platform_admin ('full') em todas as abas do projeto.
-  // VVB (verifier) segue restrita a Visão Geral + Descritivo + Verificação
-  // (só a área de upload).
+  // VVB (verifier) segue restrita a Descritivo + Verificação (só a área de
+  // upload). A aba Visão Geral foi absorvida pelo Descritivo do projeto.
   const tabs = [
-    { to: base, end: true, icon: LayoutDashboard, label: "Visão Geral", show: true },
     { to: `${base}/descritivo`, icon: FileText, label: "Descritivo do projeto", show: true },
     { to: `${base}/documentos`, icon: FolderOpen, label: "Documentos", show: accessLevel === "full" || accessLevel === "proponent" },
     { to: `${base}/calculo`, icon: Calculator, label: "Cálculo das emissões e remoções", show: accessLevel === "full" || accessLevel === "proponent" },
@@ -109,7 +108,6 @@ export function ProjetoLayout() {
           <NavLink
             key={tab.to}
             to={tab.to}
-            end={tab.end}
             className={({ isActive }) => `project-tab${isActive ? " active" : ""}`}
           >
             <tab.icon size={15} />

@@ -12,7 +12,6 @@ import { MetodologiaListPage } from "@/modules/metodologia/MetodologiaListPage";
 import { MetodologiaDetailPage } from "@/modules/metodologia/MetodologiaDetailPage";
 import { ProjetosListPage } from "@/modules/projetos/ProjetosListPage";
 import { ProjetoLayout } from "@/modules/projetos/ProjetoLayout";
-import { ProjetoOverviewPage } from "@/modules/projetos/ProjetoOverviewPage";
 import { DescritivoProjetoPage } from "@/modules/projetos/DescritivoProjetoPage";
 import { DocumentosPage } from "@/modules/projetos/DocumentosPage";
 import { CalculoEmissoesRemocoesPage } from "@/modules/projetos/CalculoEmissoesRemocoesPage";
@@ -59,7 +58,7 @@ export function AppRoutes() {
 
         <Route path="/projetos" element={<ProjetosListPage />} />
         <Route path="/projetos/:projectId" element={<ProjetoLayout />}>
-          <Route index element={<ProjetoOverviewPage />} />
+          <Route index element={<Navigate to="descritivo" replace />} />
           <Route path="descritivo" element={<DescritivoProjetoPage />} />
           <Route path="documentos" element={<DocumentosPage />} />
           <Route path="calculo" element={<CalculoEmissoesRemocoesPage />} />
