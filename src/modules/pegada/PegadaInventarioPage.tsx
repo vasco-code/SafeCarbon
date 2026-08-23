@@ -31,7 +31,7 @@ import { TdLossesLocationSource } from "./sources/TdLossesLocationSource";
 import { TdLossesMarketSource } from "./sources/TdLossesMarketSource";
 import { ThermalEnergyPurchasedSource } from "./sources/ThermalEnergyPurchasedSource";
 import { ImportPlanilhaPanel } from "./ImportPlanilhaPanel";
-import { downloadInventoryReport } from "./inventoryReport";
+import { buildInventoryReportHtml, downloadInventoryReport, downloadInventoryReportXlsx } from "./inventoryReport";
 
 interface InventoryHeader {
   id: string;
@@ -92,6 +92,7 @@ export function PegadaInventarioPage() {
   const [activeScope, setActiveScope] = useState<1 | 2 | 3>(1);
   const [active, setActive] = useState<SourceCategory>("stationary_combustion");
   const [loading, setLoading] = useState(true);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
 
   function selectScope(scope: 1 | 2 | 3) {
     setActiveScope(scope);
@@ -174,15 +175,58 @@ export function PegadaInventarioPage() {
         </span>
         <button
           type="button"
-          onClick={() => downloadInventoryReport(header, entries as unknown as InventoryEntry[])}
+          onClick={() => setPreviewHtml(buildInventoryReportHtml(header, entries as unknown as InventoryEntry[]))}
           disabled={entries.length === 0}
           title={entries.length === 0 ? "Lance ao menos uma fonte para gerar o relatório" : undefined}
         >
           <FileDown size={15} />
           Exportar relatório (.doc)
         </button>
+        <button
+          type="button"
+          onClick={() => downloadInventoryReportXlsx(header, entries as unknown as InventoryEntry[])}
+          disabled={entries.length === 0}
+          title={entries.length === 0 ? "Lance ao menos uma fonte para gerar o relatório" : undefined}
+        >
+          <FileDown size={15} />
+          Exportar Excel (.xlsx)
+        </button>
       </div>
       <p className="project-subtitle">{header.carbon_projects?.name ?? "Sem projeto vinculado"}</p>
+
+      {previewHtml && (
+        <div
+          style={{
+            border: "1px solid var(--sc-border)",
+            borderRadius: "10px",
+            padding: "1rem",
+            marginBottom: "1.5rem",
+            background: "var(--sc-surface)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+            <strong>Pré-visualização do relatório</strong>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => downloadInventoryReport(header, entries as unknown as InventoryEntry[])}
+              >
+                <FileDown size={15} />
+                Baixar arquivo (.doc)
+              </button>
+              <button type="button" onClick={() => setPreviewHtml(null)}>
+                Fechar
+              </button>
+            </div>
+          </div>
+          <iframe
+            title="Pré-visualização do relatório"
+            srcDoc={previewHtml}
+            style={{ width: "100%", height: "600px", border: "1px solid var(--sc-border)", borderRadius: "8px", background: "#fff" }}
+          />
+        </div>
+      )}
 
       <div className="report-kpi-grid" style={{ marginBottom: "1.5rem" }}>
         <KpiCard label="Escopo 1" value={`${totals.byScope[1].toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e`} />
@@ -198,30 +242,41 @@ export function PegadaInventarioPage() {
       {entries.length > 0 && (
         <div style={{ marginBottom: "1.5rem" }}>
           <h2 style={{ fontSize: "1rem" }}>Evolução mensal</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Mês</th>
-                <th>Escopo 1 (tCO₂e)</th>
-                <th>Escopo 2 (tCO₂e)</th>
-                <th>Escopo 3 (tCO₂e)</th>
-                <th>Total (tCO₂e)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {monthlyRows
-                .filter((r) => r.total > 0)
-                .map((r) => (
-                  <tr key={r.label}>
-                    <td>{r.label}</td>
-                    <td>{r.byScope[1].toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
-                    <td>{r.byScope[2].toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
-                    <td>{r.byScope[3].toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
-                    <td>{r.total.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
+          {(() => {
+            const activeMonths = monthlyRows.filter((r) => r.total > 0);
+            return (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Escopo</th>
+                    {activeMonths.map((r) => (
+                      <th key={r.label}>{r.label}</th>
+                    ))}
                   </tr>
-                ))}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {([1, 2, 3] as const).map((scope) => (
+                    <tr key={scope}>
+                      <td>Escopo {scope} (tCO₂e)</td>
+                      {activeMonths.map((r) => (
+                        <td key={r.label}>{r.byScope[scope].toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
+                      ))}
+                    </tr>
+                  ))}
+                  <tr>
+                    <td>
+                      <strong>Total (tCO₂e)</strong>
+                    </td>
+                    {activeMonths.map((r) => (
+                      <td key={r.label}>
+                        <strong>{r.total.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</strong>
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            );
+          })()}
         </div>
       )}
 
