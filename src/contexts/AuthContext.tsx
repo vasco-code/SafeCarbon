@@ -63,9 +63,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loadMemberships(data.session?.user.id).finally(() => setLoading(false));
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      loadMemberships(newSession?.user.id);
+    // Não confiar cegamente em toda sessão nula do onAuthStateChange: quando
+    // a aba volta a ficar visível depois de um tempo, o supabase-js tenta
+    // renovar o token, e uma falha transitória nessa renovação (rede, corrida
+    // entre abas) pode disparar um evento com sessão nula mesmo sem o usuário
+    // ter deslogado de fato — o ProtectedRoute reage a isso navegando pra
+    // /login, derrubando qualquer formulário em digitação. SIGNED_OUT é o
+    // único evento que tratamos como logout real sem reconfirmar; qualquer
+    // outra sessão nula é checada de novo direto no servidor antes de agir.
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if (event === "SIGNED_OUT") {
+        setSession(null);
+        setMemberships([]);
+        return;
+      }
+      if (newSession) {
+        setSession(newSession);
+        loadMemberships(newSession.user.id);
+        return;
+      }
+      supabase.auth.getSession().then(({ data }) => {
+        setSession(data.session);
+        loadMemberships(data.session?.user.id);
+      });
     });
 
     return () => listener.subscription.unsubscribe();
