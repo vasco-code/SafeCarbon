@@ -7,9 +7,16 @@ import { useAuth } from "@/contexts/AuthContext";
 interface Inventory {
   id: string;
   organization_id: string;
+  project_id: string | null;
   inventory_year: number;
   name: string | null;
   status: "draft" | "final";
+  carbon_projects: { name: string } | null;
+}
+
+interface ProjectOption {
+  id: string;
+  name: string;
 }
 
 const STATUS_LABELS: Record<string, string> = { draft: "Rascunho", final: "Finalizado" };
@@ -19,9 +26,11 @@ export function PegadaListPage() {
   const { memberships, user } = useAuth();
   const [orgId, setOrgId] = useState("");
   const [inventories, setInventories] = useState<Inventory[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [projectId, setProjectId] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -35,24 +44,41 @@ export function PegadaListPage() {
     setLoading(true);
     const { data } = await supabase
       .from("ghg_inventories")
-      .select("id, organization_id, inventory_year, name, status")
+      .select("id, organization_id, project_id, inventory_year, name, status, carbon_projects(name)")
       .eq("organization_id", targetOrg)
       .order("inventory_year", { ascending: false });
-    setInventories((data as Inventory[]) ?? []);
+    setInventories((data as unknown as Inventory[]) ?? []);
     setLoading(false);
   }
 
+  async function loadProjects(targetOrg: string) {
+    if (!targetOrg) return;
+    const { data } = await supabase
+      .from("project_roles")
+      .select("carbon_projects(id, name)")
+      .eq("org_id", targetOrg)
+      .in("role", ["proponent", "developer"]);
+    const rows = (data ?? []) as unknown as { carbon_projects: ProjectOption | null }[];
+    const unique = new Map(rows.filter((r) => r.carbon_projects).map((r) => [r.carbon_projects!.id, r.carbon_projects!]));
+    setProjects([...unique.values()].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")));
+  }
+
   useEffect(() => {
-    if (orgId) loadInventories(orgId);
+    if (orgId) {
+      loadInventories(orgId);
+      loadProjects(orgId);
+      setProjectId("");
+    }
   }, [orgId]);
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
-    if (!orgId) return;
+    if (!orgId || !projectId) return;
     setSubmitting(true);
     setError(null);
     const { error: insertError } = await supabase.from("ghg_inventories").insert({
       organization_id: orgId,
+      project_id: projectId,
       inventory_year: Number(year),
       name: name.trim() || null,
       created_by: user?.id,
@@ -61,7 +87,7 @@ export function PegadaListPage() {
     if (insertError) {
       setError(
         insertError.message.includes("duplicate")
-          ? `Já existe um inventário de ${year} para esta organização.`
+          ? `Já existe um inventário de ${year} para este projeto nesta organização.`
           : insertError.message,
       );
     } else {
@@ -101,10 +127,25 @@ export function PegadaListPage() {
         <form onSubmit={handleCreate}>
           <label htmlFor="peg-year">Ano inventariado</label>
           <input id="peg-year" type="number" value={year} onChange={(e) => setYear(e.target.value)} required />
+
+          <label htmlFor="peg-project">Projeto</label>
+          {projects.length === 0 ? (
+            <p className="auth-error">Esta organização não participa de nenhum projeto ainda.</p>
+          ) : (
+            <select id="peg-project" value={projectId} onChange={(e) => setProjectId(e.target.value)} required>
+              <option value="">Selecione...</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          )}
+
           <label htmlFor="peg-name">Nome (opcional)</label>
           <input id="peg-name" type="text" value={name} onChange={(e) => setName(e.target.value)} />
           {error && <p className="auth-error">{error}</p>}
-          <button type="submit" className="btn-primary" disabled={submitting}>
+          <button type="submit" className="btn-primary" disabled={submitting || projects.length === 0}>
             {submitting ? "Criando..." : "Criar inventário"}
           </button>
         </form>
@@ -123,6 +164,7 @@ export function PegadaListPage() {
           <thead>
             <tr>
               <th>Ano</th>
+              <th>Projeto</th>
               <th>Nome</th>
               <th>Status</th>
               <th></th>
@@ -132,6 +174,7 @@ export function PegadaListPage() {
             {inventories.map((inv) => (
               <tr key={inv.id}>
                 <td>{inv.inventory_year}</td>
+                <td>{inv.carbon_projects?.name ?? "—"}</td>
                 <td>{inv.name ?? "—"}</td>
                 <td>
                   <span className={`badge ${inv.status === "final" ? "badge-success" : "badge-neutral"}`}>

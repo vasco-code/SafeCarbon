@@ -38,6 +38,7 @@ interface InventoryHeader {
   inventory_year: number;
   name: string | null;
   status: "draft" | "final";
+  carbon_projects: { name: string } | null;
 }
 
 const SOURCE_ICONS: Record<string, typeof Factory> = {
@@ -113,10 +114,14 @@ export function PegadaInventarioPage() {
     const id = inventoryId;
     async function load() {
       const [invRes, factorCtx] = await Promise.all([
-        supabase.from("ghg_inventories").select("id, inventory_year, name, status").eq("id", id).maybeSingle(),
+        supabase
+          .from("ghg_inventories")
+          .select("id, inventory_year, name, status, carbon_projects(name)")
+          .eq("id", id)
+          .maybeSingle(),
         loadFactorContext(),
       ]);
-      setHeader(invRes.data as InventoryHeader | null);
+      setHeader(invRes.data as unknown as InventoryHeader | null);
       setCtx(factorCtx);
       await loadEntries();
       setLoading(false);
@@ -177,6 +182,7 @@ export function PegadaInventarioPage() {
           Exportar relatório (.doc)
         </button>
       </div>
+      <p className="project-subtitle">{header.carbon_projects?.name ?? "Sem projeto vinculado"}</p>
 
       <div className="report-kpi-grid" style={{ marginBottom: "1.5rem" }}>
         <KpiCard label="Escopo 1" value={`${totals.byScope[1].toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e`} />

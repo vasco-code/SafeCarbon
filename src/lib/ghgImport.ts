@@ -426,8 +426,12 @@ export function parseGhgWorkbook(
       const r = g[i] ?? [];
       if (isExample(r)) continue;
       const gasLabel = str(r[2]);
+      // Não pula linhas com todos os valores zerados: uma fonte identificada
+      // (gás/composto preenchido) que resultou em zero ainda foi considerada
+      // e deve aparecer na tabela de lançamentos — só linhas sem gás
+      // (template/vazias) são puladas.
       const vals = [num(r[4]), num(r[5]), num(r[6]), num(r[7]), num(r[8])];
-      if (!gasLabel || vals.every((v) => v === 0)) continue;
+      if (!gasLabel) continue;
       const gas = resolveGasOrBlend(ctx, gasLabel);
       if (!gas) {
         skipped.push({ sheet: fugitive, reason: "Gás ou composto não reconhecido", detail: gasLabel });
@@ -459,7 +463,7 @@ export function parseGhgWorkbook(
       if (isExample(r)) continue;
       const gasLabel = str(r[2]);
       const vals = [num(r[3]), num(r[4]), num(r[5])];
-      if (!gasLabel || vals.every((v) => v === 0)) continue;
+      if (!gasLabel) continue;
       const gas = resolveGasOrBlend(ctx, gasLabel);
       if (!gas) {
         skipped.push({ sheet: fugitive, reason: "Gás não reconhecido", detail: gasLabel });

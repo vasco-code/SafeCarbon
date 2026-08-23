@@ -1,4 +1,7 @@
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { Calculator } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import { ProducaoPage } from "@/modules/producao-comercializacao/ProducaoPage";
 import { ComercializacaoPage } from "@/modules/producao-comercializacao/ComercializacaoPage";
 import { InventarioPage } from "@/modules/inventario-emissoes/InventarioPage";
@@ -12,6 +15,19 @@ import { CicloCalculoPage } from "@/modules/creditos/CicloCalculoPage";
 // para ter seletor de ano próprio, sem depender do segmento de rota
 // /ciclos/:year.
 export function CalculoEmissoesRemocoesPage() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const [hideComercializacao, setHideComercializacao] = useState(false);
+
+  useEffect(() => {
+    if (!projectId) return;
+    supabase
+      .from("carbon_projects")
+      .select("hide_commercialization_section")
+      .eq("id", projectId)
+      .maybeSingle()
+      .then(({ data }) => setHideComercializacao(data?.hide_commercialization_section ?? false));
+  }, [projectId]);
+
   return (
     <section>
       <h2 className="module-heading">
@@ -23,9 +39,11 @@ export function CalculoEmissoesRemocoesPage() {
         <div style={{ borderTop: "1px solid var(--sc-border)", paddingTop: "1.5rem" }}>
           <ProducaoPage />
         </div>
-        <div style={{ borderTop: "1px solid var(--sc-border)", paddingTop: "1.5rem" }}>
-          <ComercializacaoPage />
-        </div>
+        {!hideComercializacao && (
+          <div style={{ borderTop: "1px solid var(--sc-border)", paddingTop: "1.5rem" }}>
+            <ComercializacaoPage />
+          </div>
+        )}
         <div style={{ borderTop: "1px solid var(--sc-border)", paddingTop: "1.5rem" }}>
           <InventarioPage />
         </div>

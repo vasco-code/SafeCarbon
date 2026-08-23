@@ -62,3 +62,48 @@ export interface Entry {
   computed: Computed;
   period_month: number | null;
 }
+
+// Evidências em arquivo por lançamento (nota fiscal, fatura, foto do
+// medidor etc.) — bucket privado, path {entry_id}/{timestamp}-{filename}.
+export interface EvidenceFile {
+  id: string;
+  file_name: string;
+  storage_path: string;
+  created_at: string;
+}
+
+export async function listEvidence(entryId: string): Promise<EvidenceFile[]> {
+  const { data } = await supabase
+    .from("ghg_entry_evidence")
+    .select("id, file_name, storage_path, created_at")
+    .eq("entry_id", entryId)
+    .order("created_at", { ascending: false });
+  return data ?? [];
+}
+
+export async function uploadEvidence(entryId: string, file: File): Promise<{ error: string | null }> {
+  const path = `${entryId}/${Date.now()}-${file.name}`;
+  const { error: uploadError } = await supabase.storage.from("ghg-entry-evidence").upload(path, file);
+  if (uploadError) return { error: uploadError.message };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase.from("ghg_entry_evidence").insert({
+    entry_id: entryId,
+    file_name: file.name,
+    storage_path: path,
+    uploaded_by: user?.id,
+  });
+  return { error: error?.message ?? null };
+}
+
+export async function deleteEvidence(evidence: EvidenceFile): Promise<{ error: string | null }> {
+  await supabase.storage.from("ghg-entry-evidence").remove([evidence.storage_path]);
+  const { error } = await supabase.from("ghg_entry_evidence").delete().eq("id", evidence.id);
+  return { error: error?.message ?? null };
+}
+
+export async function getEvidenceUrl(storagePath: string): Promise<string | null> {
+  const { data } = await supabase.storage.from("ghg-entry-evidence").createSignedUrl(storagePath, 3600);
+  return data?.signedUrl ?? null;
+}

@@ -23,7 +23,6 @@ export function ProducaoPage() {
   const [records, setRecords] = useState<ProductionRecord[]>([]);
   const [summary, setSummary] = useState<PeriodSummary[]>([]);
   const [periodYear, setPeriodYear] = useState(String(new Date().getFullYear()));
-  const [periodMonth, setPeriodMonth] = useState("");
   const [quantityKg, setQuantityKg] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -68,7 +67,7 @@ export function ProducaoPage() {
     const { error } = await supabase.from("production_records").insert({
       project_id: projectId,
       period_year: Number(periodYear),
-      period_month: periodMonth ? Number(periodMonth) : null,
+      period_month: null,
       quantity_kg: Number(quantityKg),
       source: "manual_entry",
     });
@@ -77,7 +76,6 @@ export function ProducaoPage() {
       setError(error.message);
     } else {
       setQuantityKg("");
-      setPeriodMonth("");
       loadData();
     }
   }
@@ -97,16 +95,6 @@ export function ProducaoPage() {
           value={periodYear}
           onChange={(e) => setPeriodYear(e.target.value)}
           required
-        />
-
-        <label htmlFor="period-month">Mês (opcional)</label>
-        <input
-          id="period-month"
-          type="number"
-          min={1}
-          max={12}
-          value={periodMonth}
-          onChange={(e) => setPeriodMonth(e.target.value)}
         />
 
         <label htmlFor="quantity-kg">Quantidade produzida (kg)</label>
@@ -160,7 +148,6 @@ export function ProducaoPage() {
           <thead>
             <tr>
               <th>Ano</th>
-              <th>Mês</th>
               <th>Quantidade (kg)</th>
               <th>Origem</th>
               <th></th>
@@ -170,7 +157,6 @@ export function ProducaoPage() {
             {records.map((r) => (
               <tr key={r.id}>
                 <td>{r.period_year}</td>
-                <td>{r.period_month ?? "—"}</td>
                 <td>{r.quantity_kg.toLocaleString("pt-BR")}</td>
                 <td>{r.source}</td>
                 <td className="row-actions">

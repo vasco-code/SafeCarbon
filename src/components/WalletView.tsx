@@ -254,6 +254,7 @@ export function WalletView({ projectId }: { projectId?: string }) {
             <tr>
               <th>Token</th>
               {!projectId && <th>Projeto</th>}
+              <th>Titular</th>
               <th>Quantidade (tCO₂e)</th>
               <th>Status</th>
               <th></th>
@@ -264,6 +265,7 @@ export function WalletView({ projectId }: { projectId?: string }) {
               <tr key={token.id}>
                 <td className="mono">{token.tokenId}</td>
                 {!projectId && <td>{token.projectName}</td>}
+                <td>{token.holderOrgId ? orgById.get(token.holderOrgId) ?? "—" : "—"}</td>
                 <td>{token.issuedAmount.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</td>
                 <td>
                   <span

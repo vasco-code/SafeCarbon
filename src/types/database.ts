@@ -97,6 +97,7 @@ export interface Database {
           location_text: string | null;
           status: "design" | "validation" | "active" | "suspended" | "closed";
           description: string | null;
+          hide_commercialization_section: boolean;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["carbon_projects"]["Row"]>;
@@ -393,7 +394,7 @@ export interface Database {
         Row: {
           id: string;
           project_id: string;
-          doc_type: "metodologia" | "dcp" | "resumo_calculo" | "monitoramento" | "auditoria_aprovacao" | "plano_melhorias" | "checklist" | "foto" | "outro";
+          doc_type: "metodologia" | "dcp" | "resumo_calculo" | "monitoramento" | "auditoria_aprovacao" | "plano_melhorias" | "checklist" | "foto" | "distribuicao_imagem" | "outro";
           title: string;
           file_url: string;
           storage_path: string;
@@ -457,6 +458,7 @@ export interface Database {
         Row: {
           id: string;
           organization_id: string;
+          project_id: string | null;
           inventory_year: number;
           name: string | null;
           status: "draft" | "final";
@@ -488,6 +490,19 @@ export interface Database {
         };
         Insert: Partial<Database["public"]["Tables"]["ghg_activity_entries"]["Row"]>;
         Update: Partial<Database["public"]["Tables"]["ghg_activity_entries"]["Row"]>;
+        Relationships: [];
+      };
+      ghg_entry_evidence: {
+        Row: {
+          id: string;
+          entry_id: string;
+          file_name: string;
+          storage_path: string;
+          uploaded_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ghg_entry_evidence"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["ghg_entry_evidence"]["Row"]>;
         Relationships: [];
       };
       ghg_fuel_factors: {

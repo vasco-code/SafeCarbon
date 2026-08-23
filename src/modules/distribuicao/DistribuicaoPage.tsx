@@ -2,10 +2,136 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { MapPinned, FileWarning, FileCheck2 } from "lucide-react";
+import { MapPinned, Image as ImageIcon, FileWarning, FileCheck2 } from "lucide-react";
 import { FileDropzone } from "@/components/FileDropzone";
 import { parseGeoFile, type ImportedSite } from "@/lib/geoImport";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProjectRole } from "@/hooks/useProjectRole";
+
+interface DistributionImage {
+  id: string;
+  title: string;
+  storage_path: string;
+  url: string | null;
+}
+
+// Concentração das propriedades que compraram o produto (clientes) — imagem
+// única, substituível, alternativa ao mapa interativo (ex.: a própria Figura
+// 5 do DCP, quando o projeto já tem essa peça pronta). Reaproveita o mesmo
+// bucket/tabela de Documentos, só um doc_type novo — mesmo padrão já usado
+// pela "foto" de capa do projeto em ProjetosListPage.
+function DistribuicaoImagemSection({ projectId }: { projectId: string }) {
+  const { user } = useAuth();
+  const { orgId } = useProjectRole(projectId);
+  const [image, setImage] = useState<DistributionImage | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadImage() {
+    const { data } = await supabase
+      .from("project_documents")
+      .select("id, title, storage_path")
+      .eq("project_id", projectId)
+      .eq("doc_type", "distribuicao_imagem")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!data) {
+      setImage(null);
+      setLoading(false);
+      return;
+    }
+    const { data: signed } = await supabase.storage.from("project-documents").createSignedUrl(data.storage_path, 3600);
+    setImage({ ...data, url: signed?.signedUrl ?? null });
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadImage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
+  async function handleUpload(files: File[]) {
+    const file = files[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+
+    if (image) {
+      await supabase.storage.from("project-documents").remove([image.storage_path]);
+      await supabase.from("project_documents").delete().eq("id", image.id);
+    }
+
+    const path = `${projectId}/distribuicao_imagem/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage.from("project-documents").upload(path, file);
+    if (uploadError) {
+      setError(uploadError.message);
+      setUploading(false);
+      return;
+    }
+    const { error: insertError } = await supabase.from("project_documents").insert({
+      project_id: projectId,
+      doc_type: "distribuicao_imagem",
+      title: file.name,
+      file_url: path,
+      storage_path: path,
+      uploaded_by: user?.id,
+      uploaded_by_org_id: orgId,
+    });
+    setUploading(false);
+    if (insertError) {
+      setError(insertError.message);
+    } else {
+      loadImage();
+    }
+  }
+
+  async function handleRemove() {
+    if (!image || !confirm("Remover esta imagem?")) return;
+    await supabase.storage.from("project-documents").remove([image.storage_path]);
+    await supabase.from("project_documents").delete().eq("id", image.id);
+    setImage(null);
+  }
+
+  return (
+    <section style={{ marginBottom: "2.5rem" }}>
+      <h2 className="module-heading">
+        <ImageIcon size={20} /> Distribuição Geográfica
+      </h2>
+      <p>Concentração das propriedades que compraram o produto (equivalente à Figura 5 do DCP).</p>
+
+      {error && <p className="auth-error">{error}</p>}
+      {loading && <p>Carregando...</p>}
+
+      {!loading && image && (
+        <div>
+          <img
+            src={image.url ?? undefined}
+            alt={image.title}
+            style={{ maxWidth: "100%", borderRadius: "10px", border: "1px solid var(--sc-border)" }}
+          />
+          <div style={{ marginTop: "0.75rem" }}>
+            <button type="button" className="btn-icon-danger" onClick={handleRemove}>
+              Remover imagem
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!loading && !image && (
+        <FileDropzone
+          accept="image/*"
+          onFiles={handleUpload}
+          disabled={uploading}
+          label={uploading ? "Enviando..." : "Arraste a imagem aqui ou clique para escolher"}
+          hint="PNG, JPG ou similar — uma imagem por projeto."
+        />
+      )}
+    </section>
+  );
+}
 
 interface ProjectSite {
   id: string;
@@ -179,13 +305,15 @@ export function DistribuicaoPage() {
   }
 
   return (
-    <section>
-      <h2 className="module-heading">
-        <MapPinned size={20} /> Distribuição Geográfica
-      </h2>
-      <p>Pontos de distribuição do Fator P (equivalente à Figura 5 do DCP).</p>
+    <>
+      {projectId && <DistribuicaoImagemSection projectId={projectId} />}
+      <section>
+        <h2 className="module-heading">
+          <MapPinned size={20} /> Unidades Produtoras
+        </h2>
+        <p>Localização geográfica das unidades produtoras do Fator P.</p>
 
-      <form onSubmit={handleCreate}>
+        <form onSubmit={handleCreate}>
         <label htmlFor="site-label">Local</label>
         <input id="site-label" type="text" value={label} onChange={(e) => setLabel(e.target.value)} required />
 
@@ -293,6 +421,7 @@ export function DistribuicaoPage() {
           </tbody>
         </table>
       )}
-    </section>
+      </section>
+    </>
   );
 }

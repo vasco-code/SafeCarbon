@@ -72,11 +72,15 @@ export function CicloCalculoPage() {
   const [cycle, setCycle] = useState<CycleRow | null>(null);
   const [steps, setSteps] = useState<StepRow[]>([]);
   const [batch, setBatch] = useState<BatchRow | null>(null);
-  const [token, setToken] = useState<TokenRow | null>(null);
+  // Array, não um token único: um lote pode ter sido dividido em mais de uma
+  // emissão (ex.: carteiras simuladas por organização com percentuais
+  // diferentes) — credit_issuances não tem unique(credit_batch_id).
+  const [tokens, setTokens] = useState<TokenRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
   const [issuing, setIssuing] = useState(false);
   const [retiring, setRetiring] = useState(false);
+  const [retiringTokenId, setRetiringTokenId] = useState<string | null>(null);
   const [retireReason, setRetireReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -104,7 +108,7 @@ export function CicloCalculoPage() {
       .maybeSingle();
 
     setCycle(cycleRow ?? null);
-    setToken(null);
+    setTokens([]);
 
     if (cycleRow) {
       const [stepsResult, batchResult] = await Promise.all([
@@ -123,18 +127,19 @@ export function CicloCalculoPage() {
       setBatch(batchResult.data ?? null);
 
       if (batchResult.data) {
-        const { data: issuance } = await supabase
+        const { data: issuances } = await supabase
           .from("credit_issuances")
           .select("id")
-          .eq("credit_batch_id", batchResult.data.id)
-          .maybeSingle();
-        if (issuance) {
-          const { data: tokenRow } = await supabase
+          .eq("credit_batch_id", batchResult.data.id);
+        if (issuances && issuances.length > 0) {
+          const { data: tokenRows } = await supabase
             .from("blockchain_tokens")
             .select("id, token_id, tx_hash, ledger_ref, status, retired_at, retired_reason")
-            .eq("credit_issuance_id", issuance.id)
-            .maybeSingle();
-          setToken(tokenRow ?? null);
+            .in(
+              "credit_issuance_id",
+              issuances.map((i) => i.id),
+            );
+          setTokens(tokenRows ?? []);
         }
       }
     } else {
@@ -183,8 +188,7 @@ export function CicloCalculoPage() {
     }
   }
 
-  async function handleRetire() {
-    if (!token) return;
+  async function handleRetire(tokenId: string) {
     if (!retireReason.trim()) {
       setError("Informe o motivo da aposentadoria.");
       return;
@@ -193,7 +197,7 @@ export function CicloCalculoPage() {
     setError(null);
     setMessage(null);
     const { data, error } = await supabase.functions.invoke("retire-credit", {
-      body: { blockchainTokenId: token.id, reason: retireReason },
+      body: { blockchainTokenId: tokenId, reason: retireReason },
     });
     setRetiring(false);
     if (error) {
@@ -201,6 +205,7 @@ export function CicloCalculoPage() {
     } else {
       setMessage("Token aposentado.");
       setRetireReason("");
+      setRetiringTokenId(null);
       loadData();
     }
   }
@@ -250,44 +255,51 @@ export function CicloCalculoPage() {
       {batch && (batch.status === "approved" || batch.status === "issued") && (
         <div className="dcp-section">
           <h2>Emissão e Tokenização (adaptador simulado)</h2>
-          {!token && (
+          {tokens.length === 0 && (
             <button type="button" className="btn-primary" onClick={handleIssue} disabled={issuing}>
               <Zap size={15} />
               {issuing ? "Emitindo..." : "Emitir crédito na blockchain"}
             </button>
           )}
-          {token && (
-            <>
-              <p>Token: {token.token_id}</p>
-              <p>tx_hash: {token.tx_hash}</p>
-              <p>Ledger ref: {token.ledger_ref}</p>
-              <p>Status: {token.status}</p>
+          {tokens.map((t) => (
+            <div key={t.id} style={{ marginTop: tokens.length > 1 ? "1rem" : 0, paddingTop: tokens.length > 1 ? "1rem" : 0, borderTop: tokens.length > 1 ? "1px solid var(--sc-border)" : "none" }}>
+              <p>Token: {t.token_id}</p>
+              <p>tx_hash: {t.tx_hash}</p>
+              <p>Ledger ref: {t.ledger_ref}</p>
+              <p>Status: {t.status}</p>
               <p>
-                <Link to={`/verificar/${token.token_id}`} target="_blank" rel="noreferrer">
+                <Link to={`/verificar/${t.token_id}`} target="_blank" rel="noreferrer">
                   Ver página pública de verificação (com QR code) ↗
                 </Link>
               </p>
-              {token.status === "retired" ? (
+              {t.status === "retired" ? (
                 <p>
-                  Aposentado em {token.retired_at && new Date(token.retired_at).toLocaleString("pt-BR")} — motivo:{" "}
-                  {token.retired_reason}
+                  Aposentado em {t.retired_at && new Date(t.retired_at).toLocaleString("pt-BR")} — motivo:{" "}
+                  {t.retired_reason}
                 </p>
-              ) : (
+              ) : retiringTokenId === t.id ? (
                 <>
-                  <label htmlFor="retire-reason">Motivo da aposentadoria</label>
+                  <label htmlFor={`retire-reason-${t.id}`}>Motivo da aposentadoria</label>
                   <input
-                    id="retire-reason"
+                    id={`retire-reason-${t.id}`}
                     type="text"
                     value={retireReason}
                     onChange={(e) => setRetireReason(e.target.value)}
                   />
-                  <button type="button" onClick={handleRetire} disabled={retiring}>
-                    {retiring ? "Aposentando..." : "Aposentar (retire)"}
+                  <button type="button" onClick={() => handleRetire(t.id)} disabled={retiring}>
+                    {retiring ? "Aposentando..." : "Confirmar aposentadoria"}
+                  </button>
+                  <button type="button" onClick={() => setRetiringTokenId(null)}>
+                    Cancelar
                   </button>
                 </>
+              ) : (
+                <button type="button" onClick={() => setRetiringTokenId(t.id)}>
+                  Aposentar (retire)
+                </button>
               )}
-            </>
-          )}
+            </div>
+          ))}
         </div>
       )}
 

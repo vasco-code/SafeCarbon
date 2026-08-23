@@ -165,7 +165,7 @@ function OrgSummary({ label, org }: { label: string; org: OrgInfo | null }) {
         <img src={org.logo_url} alt={org.name} style={{ maxWidth: "48px", maxHeight: "48px", objectFit: "contain" }} />
       ) : null}
       <div>
-        <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--sc-muted)" }}>{label}</p>
+        <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--sc-muted)", whiteSpace: "nowrap" }}>{label}</p>
         <p style={{ margin: 0, fontWeight: 600 }}>{org.name}</p>
         {org.tax_id && <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--sc-muted)" }}>{org.tax_id}</p>}
       </div>
@@ -233,7 +233,10 @@ export function DescritivoProjetoPage() {
         <FileText size={20} /> Descritivo do Projeto
       </h2>
 
-      <div className="report-kpi-grid" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginBottom: "1.5rem" }}>
+      {/* auto-fit, não repeat(2, ...): quando outros projetos tiverem mais
+          organizações (ex.: "Organizações Participantes"), os cards se
+          reorganizam sozinhos em vez de precisar mexer no grid de novo. */}
+      <div className="report-kpi-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", marginBottom: "1.5rem" }}>
         <div className="card report-kpi-card" style={{ padding: "1rem" }}>
           <OrgSummary label="Organização proponente" org={project.organizations_proponent} />
         </div>
