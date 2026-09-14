@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Palette, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { BrandingConfig } from "@/hooks/useBranding";
+import { FileDropzone } from "@/components/FileDropzone";
 
 const DEFAULT_BRANDING: BrandingConfig = {
   subdomain: "default",
@@ -70,6 +71,9 @@ export function BrandingAdminPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newSubdomain, setNewSubdomain] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const currentSubdomain = getSubdomainFromHostname();
   const [selectedSubdomain, setSelectedSubdomain] = useState(currentSubdomain);
@@ -101,7 +105,22 @@ export function BrandingAdminPage() {
     domains.add("default");
     setSubdomains(Array.from(domains).sort());
 
+    setLogoFile(null);
+    setFaviconFile(null);
     setLoading(false);
+  }
+
+  // Upload real num bucket público — getPublicUrl() nunca expira, diferente
+  // da signed URL que causou o logo quebrado que motivou essa troca.
+  async function uploadAsset(file: File, kind: "logo" | "favicon"): Promise<string | null> {
+    const path = `branding/${branding.subdomain}/${kind}-${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage.from("logos-public").upload(path, file);
+    if (uploadError) {
+      setMessage(`Erro ao enviar ${kind === "logo" ? "o logo" : "o favicon"}: ${uploadError.message}`);
+      return null;
+    }
+    const { data } = supabase.storage.from("logos-public").getPublicUrl(path);
+    return data.publicUrl;
   }
 
   async function handleCreateSubdomain(event: FormEvent) {
@@ -155,9 +174,35 @@ export function BrandingAdminPage() {
     setSaving(true);
     setMessage(null);
 
+    let logoUrl = branding.logo_url;
+    let faviconUrl = branding.favicon_url;
+
+    if (logoFile || faviconFile) {
+      setUploading(true);
+      if (logoFile) {
+        const uploaded = await uploadAsset(logoFile, "logo");
+        if (!uploaded) {
+          setUploading(false);
+          setSaving(false);
+          return;
+        }
+        logoUrl = uploaded;
+      }
+      if (faviconFile) {
+        const uploaded = await uploadAsset(faviconFile, "favicon");
+        if (!uploaded) {
+          setUploading(false);
+          setSaving(false);
+          return;
+        }
+        faviconUrl = uploaded;
+      }
+      setUploading(false);
+    }
+
     const payload = {
-      logo_url: branding.logo_url,
-      favicon_url: branding.favicon_url,
+      logo_url: logoUrl,
+      favicon_url: faviconUrl,
       primary_oklch: branding.primary_oklch,
       accent_oklch: branding.accent_oklch,
       success_oklch: branding.success_oklch,
@@ -389,28 +434,58 @@ export function BrandingAdminPage() {
             <h2 style={{ fontSize: "1.125rem", marginTop: 0 }}>Logos & Assets</h2>
 
             <div style={{ marginBottom: "1rem" }}>
-              <label htmlFor="logo-url">Logo Principal (URL)</label>
-              <input
-                id="logo-url"
-                type="text"
-                value={branding.logo_url ?? ""}
-                onChange={(e) =>
-                  setBranding((prev) => ({ ...prev, logo_url: e.target.value }))
-                }
-                placeholder="https://..."
+              <label>Logo Principal</label>
+              {logoFile ? (
+                <p style={{ fontSize: "0.8125rem", color: "var(--sc-muted)", margin: "0 0 0.5rem" }}>
+                  Novo arquivo: {logoFile.name}{" "}
+                  <button type="button" className="btn-icon-danger" onClick={() => setLogoFile(null)}>
+                    Cancelar
+                  </button>
+                </p>
+              ) : (
+                branding.logo_url && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                    <img src={branding.logo_url} alt="Logo atual" style={{ width: "40px", height: "40px", objectFit: "contain" }} />
+                    <button type="button" className="btn-icon-danger" onClick={() => setBranding((prev) => ({ ...prev, logo_url: null }))}>
+                      Remover
+                    </button>
+                  </div>
+                )
+              )}
+              <FileDropzone
+                accept="image/*"
+                onFiles={(files) => setLogoFile(files[0] ?? null)}
+                disabled={saving || uploading}
+                label="Arraste o logo ou clique para escolher"
+                hint="PNG, JPG ou SVG — um arquivo de imagem, não um link."
               />
             </div>
 
             <div style={{ marginBottom: "1rem" }}>
-              <label htmlFor="favicon-url">Favicon (URL)</label>
-              <input
-                id="favicon-url"
-                type="text"
-                value={branding.favicon_url ?? ""}
-                onChange={(e) =>
-                  setBranding((prev) => ({ ...prev, favicon_url: e.target.value }))
-                }
-                placeholder="https://..."
+              <label>Favicon</label>
+              {faviconFile ? (
+                <p style={{ fontSize: "0.8125rem", color: "var(--sc-muted)", margin: "0 0 0.5rem" }}>
+                  Novo arquivo: {faviconFile.name}{" "}
+                  <button type="button" className="btn-icon-danger" onClick={() => setFaviconFile(null)}>
+                    Cancelar
+                  </button>
+                </p>
+              ) : (
+                branding.favicon_url && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                    <img src={branding.favicon_url} alt="Favicon atual" style={{ width: "24px", height: "24px", objectFit: "contain" }} />
+                    <button type="button" className="btn-icon-danger" onClick={() => setBranding((prev) => ({ ...prev, favicon_url: null }))}>
+                      Remover
+                    </button>
+                  </div>
+                )
+              )}
+              <FileDropzone
+                accept="image/*"
+                onFiles={(files) => setFaviconFile(files[0] ?? null)}
+                disabled={saving || uploading}
+                label="Arraste o favicon ou clique para escolher"
+                hint="PNG ou ICO pequeno (ex.: 32x32)."
               />
             </div>
 

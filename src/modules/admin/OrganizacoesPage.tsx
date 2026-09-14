@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Building2, Plus, Edit2, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { FileDropzone } from "@/components/FileDropzone";
 
 interface Organization {
   id: string;
@@ -38,8 +39,10 @@ export function OrganizacoesPage() {
     name: "",
     org_type: "project_developer" as Organization["org_type"],
     tax_id: "",
-    logo_url: "",
   });
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     if (!canManageUsers) return;
@@ -86,8 +89,9 @@ export function OrganizacoesPage() {
       name: "",
       org_type: "project_developer",
       tax_id: "",
-      logo_url: "",
     });
+    setLogoUrl(null);
+    setLogoFile(null);
     setEditingId(null);
     setShowCreateForm(false);
   }
@@ -97,10 +101,27 @@ export function OrganizacoesPage() {
       name: org.name,
       org_type: org.org_type,
       tax_id: org.tax_id ?? "",
-      logo_url: org.logo_url ?? "",
     });
+    setLogoUrl(org.logo_url ?? null);
+    setLogoFile(null);
     setEditingId(org.id);
     setShowCreateForm(true);
+  }
+
+  // Upload real (arquivo de imagem, não link colado) num bucket público —
+  // getPublicUrl() nunca expira, diferente de createSignedUrl().
+  async function uploadLogo(orgId: string): Promise<string | null> {
+    if (!logoFile) return logoUrl;
+    setUploadingLogo(true);
+    const path = `orgs/${orgId}/${Date.now()}-${logoFile.name}`;
+    const { error: uploadError } = await supabase.storage.from("logos-public").upload(path, logoFile);
+    setUploadingLogo(false);
+    if (uploadError) {
+      setError(`Erro ao enviar o logo: ${uploadError.message}`);
+      return null;
+    }
+    const { data } = supabase.storage.from("logos-public").getPublicUrl(path);
+    return data.publicUrl;
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -115,18 +136,18 @@ export function OrganizacoesPage() {
       return;
     }
 
-    const payload = {
+    const basePayload = {
       name: formData.name.trim(),
       org_type: formData.org_type,
       tax_id: formData.tax_id.trim() || null,
-      logo_url: formData.logo_url.trim() || null,
     };
 
     if (editingId) {
       // Update
+      const finalLogoUrl = await uploadLogo(editingId);
       const { error: err } = await supabase
         .from("organizations")
-        .update(payload)
+        .update({ ...basePayload, logo_url: finalLogoUrl })
         .eq("id", editingId);
 
       setSaving(false);
@@ -142,17 +163,31 @@ export function OrganizacoesPage() {
         await loadOrganizations();
       }
     } else {
-      // Create
-      const { error: err } = await supabase.from("organizations").insert([payload]);
+      // Create — a organização precisa existir antes do upload (o caminho
+      // do arquivo usa o id dela).
+      const { data: created, error: err } = await supabase
+        .from("organizations")
+        .insert([{ ...basePayload, logo_url: null }])
+        .select("id")
+        .single();
+
+      if (err || !created) {
+        setSaving(false);
+        setError(`Erro ao criar: ${err?.message ?? "erro desconhecido"}`);
+        return;
+      }
+
+      if (logoFile) {
+        const finalLogoUrl = await uploadLogo(created.id);
+        if (finalLogoUrl) {
+          await supabase.from("organizations").update({ logo_url: finalLogoUrl }).eq("id", created.id);
+        }
+      }
 
       setSaving(false);
-      if (err) {
-        setError(`Erro ao criar: ${err.message}`);
-      } else {
-        setMessage("Organização criada com sucesso!");
-        resetForm();
-        await loadOrganizations();
-      }
+      setMessage("Organização criada com sucesso!");
+      resetForm();
+      await loadOrganizations();
     }
   }
 
@@ -248,13 +283,29 @@ export function OrganizacoesPage() {
               />
             </div>
             <div>
-              <label htmlFor="org-logo">Logo (URL)</label>
-              <input
-                id="org-logo"
-                type="text"
-                value={formData.logo_url}
-                onChange={(e) => setFormData((prev) => ({ ...prev, logo_url: e.target.value }))}
-                placeholder="https://..."
+              <label>Logo</label>
+              {logoUrl && !logoFile && (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                  <img src={logoUrl} alt="Logo atual" style={{ width: "40px", height: "40px", objectFit: "contain", borderRadius: "4px", border: "1px solid var(--sc-border)" }} />
+                  <button type="button" className="btn-icon-danger" onClick={() => setLogoUrl(null)}>
+                    Remover
+                  </button>
+                </div>
+              )}
+              {logoFile && (
+                <p style={{ fontSize: "0.8125rem", color: "var(--sc-muted)", margin: "0 0 0.5rem" }}>
+                  Novo arquivo: {logoFile.name}{" "}
+                  <button type="button" className="btn-icon-danger" onClick={() => setLogoFile(null)}>
+                    Cancelar
+                  </button>
+                </p>
+              )}
+              <FileDropzone
+                accept="image/*"
+                onFiles={(files) => setLogoFile(files[0] ?? null)}
+                disabled={saving || uploadingLogo}
+                label="Arraste o arquivo do logo ou clique para escolher"
+                hint="PNG, JPG ou SVG — um arquivo de imagem, não um link."
               />
             </div>
           </div>
