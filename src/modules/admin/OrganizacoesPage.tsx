@@ -109,19 +109,22 @@ export function OrganizacoesPage() {
   }
 
   // Upload real (arquivo de imagem, não link colado) num bucket público —
-  // getPublicUrl() nunca expira, diferente de createSignedUrl().
-  async function uploadLogo(orgId: string): Promise<string | null> {
-    if (!logoFile) return logoUrl;
+  // getPublicUrl() nunca expira, diferente de createSignedUrl(). `changed:
+  // false` no retorno sinaliza falha de upload — o chamador deve OMITIR
+  // logo_url do payload nesse caso, e não gravar null, senão um upload que
+  // falha apaga o logo que já existia.
+  async function uploadLogo(orgId: string): Promise<{ changed: boolean; url: string | null }> {
+    if (!logoFile) return { changed: true, url: logoUrl };
     setUploadingLogo(true);
     const path = `orgs/${orgId}/${Date.now()}-${logoFile.name}`;
     const { error: uploadError } = await supabase.storage.from("logos-public").upload(path, logoFile);
     setUploadingLogo(false);
     if (uploadError) {
       setError(`Erro ao enviar o logo: ${uploadError.message}`);
-      return null;
+      return { changed: false, url: null };
     }
     const { data } = supabase.storage.from("logos-public").getPublicUrl(path);
-    return data.publicUrl;
+    return { changed: true, url: data.publicUrl };
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -143,11 +146,13 @@ export function OrganizacoesPage() {
     };
 
     if (editingId) {
-      // Update
-      const finalLogoUrl = await uploadLogo(editingId);
+      // Update — se o upload do logo falhar, omite logo_url do payload (não
+      // grava null) pra não apagar o logo que já existia.
+      const logoResult = await uploadLogo(editingId);
+      const payload = logoResult.changed ? { ...basePayload, logo_url: logoResult.url } : basePayload;
       const { error: err } = await supabase
         .from("organizations")
-        .update({ ...basePayload, logo_url: finalLogoUrl })
+        .update(payload)
         .eq("id", editingId);
 
       setSaving(false);
@@ -178,9 +183,9 @@ export function OrganizacoesPage() {
       }
 
       if (logoFile) {
-        const finalLogoUrl = await uploadLogo(created.id);
-        if (finalLogoUrl) {
-          await supabase.from("organizations").update({ logo_url: finalLogoUrl }).eq("id", created.id);
+        const logoResult = await uploadLogo(created.id);
+        if (logoResult.changed && logoResult.url) {
+          await supabase.from("organizations").update({ logo_url: logoResult.url }).eq("id", created.id);
         }
       }
 
