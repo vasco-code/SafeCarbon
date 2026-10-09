@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Leaf, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { loadOrgProjects, type ProjectOption } from "./orgProjects";
 
 interface Inventory {
   id: string;
@@ -12,11 +13,6 @@ interface Inventory {
   name: string | null;
   status: "draft" | "final";
   carbon_projects: { name: string } | null;
-}
-
-interface ProjectOption {
-  id: string;
-  name: string;
 }
 
 const STATUS_LABELS: Record<string, string> = { draft: "Rascunho", final: "Finalizado" };
@@ -53,14 +49,7 @@ export function PegadaListPage() {
 
   async function loadProjects(targetOrg: string) {
     if (!targetOrg) return;
-    const { data } = await supabase
-      .from("project_roles")
-      .select("carbon_projects(id, name)")
-      .eq("org_id", targetOrg)
-      .in("role", ["proponent", "developer"]);
-    const rows = (data ?? []) as unknown as { carbon_projects: ProjectOption | null }[];
-    const unique = new Map(rows.filter((r) => r.carbon_projects).map((r) => [r.carbon_projects!.id, r.carbon_projects!]));
-    setProjects([...unique.values()].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")));
+    setProjects(await loadOrgProjects(targetOrg));
   }
 
   useEffect(() => {
@@ -73,12 +62,12 @@ export function PegadaListPage() {
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
-    if (!orgId || !projectId) return;
+    if (!orgId) return;
     setSubmitting(true);
     setError(null);
     const { error: insertError } = await supabase.from("ghg_inventories").insert({
       organization_id: orgId,
-      project_id: projectId,
+      project_id: projectId || null,
       inventory_year: Number(year),
       name: name.trim() || null,
       created_by: user?.id,
@@ -128,24 +117,20 @@ export function PegadaListPage() {
           <label htmlFor="peg-year">Ano inventariado</label>
           <input id="peg-year" type="number" value={year} onChange={(e) => setYear(e.target.value)} required />
 
-          <label htmlFor="peg-project">Projeto</label>
-          {projects.length === 0 ? (
-            <p className="auth-error">Esta organização não participa de nenhum projeto ainda.</p>
-          ) : (
-            <select id="peg-project" value={projectId} onChange={(e) => setProjectId(e.target.value)} required>
-              <option value="">Selecione...</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
+          <label htmlFor="peg-project">Projeto (opcional)</label>
+          <select id="peg-project" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+            <option value="">Sem projeto — vincular depois</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
 
           <label htmlFor="peg-name">Nome (opcional)</label>
           <input id="peg-name" type="text" value={name} onChange={(e) => setName(e.target.value)} />
           {error && <p className="auth-error">{error}</p>}
-          <button type="submit" className="btn-primary" disabled={submitting || projects.length === 0}>
+          <button type="submit" className="btn-primary" disabled={submitting}>
             {submitting ? "Criando..." : "Criar inventário"}
           </button>
         </form>

@@ -31,6 +31,7 @@ import { TdLossesLocationSource } from "./sources/TdLossesLocationSource";
 import { TdLossesMarketSource } from "./sources/TdLossesMarketSource";
 import { ThermalEnergyPurchasedSource } from "./sources/ThermalEnergyPurchasedSource";
 import { ImportPlanilhaPanel } from "./ImportPlanilhaPanel";
+import { loadOrgProjects, type ProjectOption } from "./orgProjects";
 import { buildInventoryReportHtml, downloadInventoryReport, downloadInventoryReportXlsx } from "./inventoryReport";
 
 interface InventoryHeader {
@@ -38,6 +39,8 @@ interface InventoryHeader {
   inventory_year: number;
   name: string | null;
   status: "draft" | "final";
+  organization_id: string;
+  project_id: string | null;
   carbon_projects: { name: string } | null;
 }
 
@@ -93,6 +96,11 @@ export function PegadaInventarioPage() {
   const [active, setActive] = useState<SourceCategory>("stationary_combustion");
   const [loading, setLoading] = useState(true);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [linkProjectId, setLinkProjectId] = useState("");
+  const [editingProject, setEditingProject] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [linking, setLinking] = useState(false);
 
   function selectScope(scope: 1 | 2 | 3) {
     setActiveScope(scope);
@@ -117,18 +125,43 @@ export function PegadaInventarioPage() {
       const [invRes, factorCtx] = await Promise.all([
         supabase
           .from("ghg_inventories")
-          .select("id, inventory_year, name, status, carbon_projects(name)")
+          .select("id, inventory_year, name, status, organization_id, project_id, carbon_projects(name)")
           .eq("id", id)
           .maybeSingle(),
         loadFactorContext(),
       ]);
-      setHeader(invRes.data as unknown as InventoryHeader | null);
+      const inv = invRes.data as unknown as InventoryHeader | null;
+      setHeader(inv);
+      if (inv) setProjects(await loadOrgProjects(inv.organization_id));
       setCtx(factorCtx);
       await loadEntries();
       setLoading(false);
     }
     load();
   }, [inventoryId]);
+
+  async function handleLinkProject(newProjectId: string | null) {
+    if (!inventoryId || !header) return;
+    setLinking(true);
+    setLinkError(null);
+    const { error: updateError } = await supabase
+      .from("ghg_inventories")
+      .update({ project_id: newProjectId })
+      .eq("id", inventoryId);
+    setLinking(false);
+    if (updateError) {
+      setLinkError(
+        updateError.message.includes("duplicate")
+          ? `Já existe um inventário de ${header.inventory_year} para esse projeto nesta organização.`
+          : updateError.message,
+      );
+      return;
+    }
+    const name = projects.find((p) => p.id === newProjectId)?.name;
+    setHeader({ ...header, project_id: newProjectId, carbon_projects: name ? { name } : null });
+    setEditingProject(false);
+    setLinkProjectId("");
+  }
 
   const totals = useMemo(() => aggregate(entries as unknown as InventoryEntry[]), [entries]);
   const monthlyRows = useMemo(() => {
@@ -192,7 +225,43 @@ export function PegadaInventarioPage() {
           Exportar Excel (.xlsx)
         </button>
       </div>
-      <p className="project-subtitle">{header.carbon_projects?.name ?? "Sem projeto vinculado"}</p>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>
+        <p className="project-subtitle" style={{ margin: 0 }}>
+          {header.carbon_projects?.name ?? "Sem projeto vinculado"}
+        </p>
+        {!editingProject && (
+          <button type="button" onClick={() => setEditingProject(true)}>
+            {header.project_id ? "Alterar projeto" : "Vincular a um projeto"}
+          </button>
+        )}
+        {editingProject && (
+          <>
+            <select value={linkProjectId} onChange={(e) => setLinkProjectId(e.target.value)} disabled={linking}>
+              <option value="">Selecione...</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <button type="button" className="btn-primary" style={{ marginTop: 0 }} disabled={linking || !linkProjectId} onClick={() => handleLinkProject(linkProjectId)}>
+              {linking ? "Salvando..." : "Salvar"}
+            </button>
+            {header.project_id && (
+              <button type="button" disabled={linking} onClick={() => handleLinkProject(null)}>
+                Desvincular
+              </button>
+            )}
+            <button type="button" disabled={linking} onClick={() => { setEditingProject(false); setLinkError(null); }}>
+              Cancelar
+            </button>
+          </>
+        )}
+      </div>
+      {editingProject && projects.length === 0 && (
+        <p style={{ fontSize: "0.8125rem", color: "var(--sc-muted)" }}>Esta organização não participa de nenhum projeto ainda.</p>
+      )}
+      {linkError && <p className="auth-error">{linkError}</p>}
 
       {previewHtml && (
         <div
