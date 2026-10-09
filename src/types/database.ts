@@ -705,6 +705,10 @@ export interface Database {
       };
     };
     Functions: {
+      get_manageable_orgs: {
+        Args: Record<string, never>;
+        Returns: { id: string; name: string; org_type: string }[];
+      };
       get_org_members_with_email: {
         Args: { p_org_id: string };
         Returns: {

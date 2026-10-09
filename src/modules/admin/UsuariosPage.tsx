@@ -40,12 +40,17 @@ export function UsuariosPage() {
 
   useEffect(() => {
     if (!canManageUsers) return;
+    // Só as orgs onde o chamador pode gerenciar usuários (a própria + as
+    // proponentes/verificadoras dos projetos dela, se desenvolvedora).
     supabase
-      .from("organizations")
-      .select("id, name, org_type")
-      .order("name")
-      .then(({ data }) => {
-        const rows = (data ?? []) as OrgOption[];
+      .rpc("get_manageable_orgs")
+      .then(async ({ data, error: rpcError }) => {
+        // Fallback p/ deploy do frontend antes da migration 20261009000056
+        // (RPC ainda inexistente): lista todas, como era antes.
+        const source = rpcError
+          ? (await supabase.from("organizations").select("id, name, org_type").order("name")).data
+          : data;
+        const rows = (source ?? []) as OrgOption[];
         setOrgs(rows);
         setOrgId((current) => {
           const next = current || rows[0]?.id || "";

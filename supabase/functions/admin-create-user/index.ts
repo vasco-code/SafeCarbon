@@ -1,8 +1,9 @@
 // Cria/convida um usuário e o associa a uma organização.
 //
 // Roda com a service role key (nunca exposta ao frontend) só depois de validar,
-// com o token do próprio chamador, que ele é admin da plataforma ou
-// owner/manager da organização de destino.
+// com o token do próprio chamador, que ele pode gerenciar membros da
+// organização de destino (can_manage_org_members). A regra "desenvolvedora
+// não tem owner" é um trigger em org_members.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -51,21 +52,20 @@ Deno.serve(async (req) => {
       return json({ error: "Não autenticado." }, 401);
     }
 
-    const { data: isAdmin } = await callerClient.rpc("is_platform_admin");
-
-    let allowed = Boolean(isAdmin);
-    if (!allowed) {
-      const { data: membership } = await callerClient
-        .from("org_members")
-        .select("member_role")
-        .eq("org_id", orgId)
-        .eq("user_id", callerData.user.id)
-        .maybeSingle();
-      allowed = membership?.member_role === "owner" || membership?.member_role === "manager";
-    }
+    // can_manage_org_members: platform admin, owner/manager da própria org, ou
+    // owner/manager de uma desenvolvedora de projeto em que a org-alvo é
+    // proponente/verificadora (ver migration 20261009000056).
+    const { data: allowed } = await callerClient.rpc("can_manage_org_members", { p_org_id: orgId });
 
     if (!allowed) {
       return json({ error: "Sem permissão para criar usuários nessa organização." }, 403);
+    }
+
+    // Mesma regra do trigger em org_members, checada ANTES do convite para não
+    // deixar um usuário convidado sem vínculo se o insert for recusado.
+    const { data: targetOrg } = await callerClient.from("organizations").select("org_type").eq("id", orgId).maybeSingle();
+    if (targetOrg?.org_type === "project_developer" && memberRole === "owner") {
+      return json({ error: "Organizações desenvolvedoras não podem ter usuários com papel de owner." }, 400);
     }
 
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
