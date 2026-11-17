@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { sourceLabel } from "@/modules/inventario-emissoes/sourceLabels";
 import { useParams } from "react-router-dom";
 import { FileText, Sparkles, FileDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -235,7 +236,7 @@ export function DcpEditorPage() {
           `${label}:`,
           ...group.map(
             (e) =>
-              `  ${e.source_type}: ${Number(e.activity_quantity).toLocaleString("pt-BR")} ${e.activity_unit} -> ${Number(e.calculated_tco2e).toLocaleString("pt-BR", { maximumFractionDigits: 4 })} tCO2e`,
+              `  ${sourceLabel(e.source_type)}: ${Number(e.activity_quantity).toLocaleString("pt-BR")} ${e.activity_unit} -> ${Number(e.calculated_tco2e).toLocaleString("pt-BR", { maximumFractionDigits: 4 })} tCO2e`,
           ),
           `  Subtotal ${label}: ${subtotal.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} tCO2e`,
         ];

@@ -99,7 +99,11 @@ export function VerificarTokenPage() {
           </div>
           <div className="verify-field">
             <dt>Padrão de registro</dt>
-            <dd>{info.registry_standard === "none_yet" ? "Não registrado em padrão externo" : info.registry_standard}</dd>
+            <dd>{info.registry_standard === "none_yet"
+                ? "Não registrado em padrão externo"
+                : info.registry_standard === "safe_trace_proprio"
+                  ? "Metodologia própria registrada na Safe Trace (em registro)"
+                  : info.registry_standard}</dd>
           </div>
           <div className="verify-field">
             <dt>Emitido em</dt>

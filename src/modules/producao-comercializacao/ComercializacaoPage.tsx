@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { Receipt, FileWarning, FileCheck2 } from "lucide-react";
 import { FileDropzone } from "@/components/FileDropzone";
 import { supabase } from "@/lib/supabase";
+import { useProjectRole } from "@/hooks/useProjectRole";
 
 interface CommercializationDocument {
   id: string;
@@ -68,6 +69,8 @@ function parseNfeXml(xmlText: string): ParsedNfe {
 
 export function ComercializacaoPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const { accessLevel, canWrite } = useProjectRole(projectId);
+  const canEditFull = accessLevel === "full" && canWrite;
   const [documents, setDocuments] = useState<CommercializationDocument[]>([]);
   const [batch, setBatch] = useState<BatchItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -180,17 +183,19 @@ export function ComercializacaoPage() {
       </h2>
       <p>Notas fiscais importadas e fator de comercialização calculado.</p>
 
-      <FileDropzone
-        accept=".xml"
-        multiple
-        onFiles={handleFiles}
-        label="Arraste os XML das NF-e aqui ou clique para escolher"
-        hint="Aceita várias notas de uma vez — cada arquivo é lido e validado antes de importar."
-      />
+      {canWrite && (
+        <FileDropzone
+          accept=".xml"
+          multiple
+          onFiles={handleFiles}
+          label="Arraste os XML das NF-e aqui ou clique para escolher"
+          hint="Aceita várias notas de uma vez — cada arquivo é lido e validado antes de importar."
+        />
+      )}
 
       {error && <p className="auth-error">{error}</p>}
 
-      {batch.length > 0 && (
+      {canWrite && batch.length > 0 && (
         <div className="nfe-preview" style={{ maxWidth: "none" }}>
           <p>
             {validCount} de {batch.length} arquivo(s) prontos para importar.
@@ -244,7 +249,7 @@ export function ComercializacaoPage() {
               <th>Quantidade (kg)</th>
               <th>Já creditado</th>
               <th>Ano vinculado</th>
-              <th></th>
+              {canEditFull && <th></th>}
             </tr>
           </thead>
           <tbody>
@@ -262,6 +267,7 @@ export function ComercializacaoPage() {
                     type="checkbox"
                     checked={d.already_credited}
                     onChange={() => handleToggleCredited(d)}
+                    disabled={!canEditFull}
                     aria-label="Já creditado"
                   />
                 </td>
@@ -271,14 +277,17 @@ export function ComercializacaoPage() {
                     style={{ width: "5.5rem" }}
                     defaultValue={d.linked_production_period_year ?? ""}
                     onBlur={(e) => handleSetLinkedYear(d, e.target.value)}
+                    disabled={!canEditFull}
                     aria-label="Ano de produção vinculado"
                   />
                 </td>
-                <td className="row-actions">
-                  <button type="button" className="btn-icon-danger" onClick={() => handleDelete(d.id)}>
-                    Excluir
-                  </button>
-                </td>
+                {canEditFull && (
+                  <td className="row-actions">
+                    <button type="button" className="btn-icon-danger" onClick={() => handleDelete(d.id)}>
+                      Excluir
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

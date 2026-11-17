@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import { Wind } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useProjectRole } from "@/hooks/useProjectRole";
 
 type LeakageCategory =
   | "rebound_effect"
@@ -36,6 +37,8 @@ const DCP_CATEGORIES: LeakageCategory[] = [
 
 export function VazamentosPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const { accessLevel, canWrite } = useProjectRole(projectId);
+  const canDelete = accessLevel === "full" && canWrite;
   const [assessments, setAssessments] = useState<LeakageAssessment[]>([]);
   const [periodYear, setPeriodYear] = useState(String(new Date().getFullYear()));
   const [category, setCategory] = useState<LeakageCategory>("rebound_effect");
@@ -110,6 +113,7 @@ export function VazamentosPage() {
       </h2>
       <p>Avaliação por categoria e fator de vazamento (LF) do ciclo.</p>
 
+      {canWrite && (
       <form onSubmit={handleSubmit}>
         <label htmlFor="leak-year">Ano</label>
         <input id="leak-year" type="number" value={periodYear} onChange={(e) => setPeriodYear(e.target.value)} required />
@@ -152,6 +156,7 @@ export function VazamentosPage() {
           {submitting ? "Salvando..." : "Registrar avaliação"}
         </button>
       </form>
+      )}
 
       <h2>Avaliações registradas</h2>
       {assessments.length === 0 && (
@@ -168,7 +173,7 @@ export function VazamentosPage() {
               <th>Conclusão</th>
               <th>Justificativa</th>
               <th>LF (%)</th>
-              <th></th>
+              {canDelete && <th></th>}
             </tr>
           </thead>
           <tbody>
@@ -186,11 +191,13 @@ export function VazamentosPage() {
                 <td>{a.conclusion}</td>
                 <td>{a.justification}</td>
                 <td>{a.leakage_factor_pct}</td>
-                <td className="row-actions">
-                  <button type="button" className="btn-icon-danger" onClick={() => handleDelete(a.id)}>
-                    Excluir
-                  </button>
-                </td>
+                {canDelete && (
+                  <td className="row-actions">
+                    <button type="button" className="btn-icon-danger" onClick={() => handleDelete(a.id)}>
+                      Excluir
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

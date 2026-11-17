@@ -31,7 +31,7 @@ interface PendingRequest {
 
 export function ProjetoStatusPage() {
   const { projectId } = useParams<{ projectId: string }>();
-  const { accessLevel } = useProjectRole(projectId);
+  const { accessLevel, canWrite } = useProjectRole(projectId);
 
   const [currentStatus, setCurrentStatus] = useState<ProjectStatus | null>(null);
   const [newStatus, setNewStatus] = useState<ProjectStatus | null>(null);
@@ -171,8 +171,8 @@ export function ProjetoStatusPage() {
   if (loading || !currentStatus) return <p>Carregando...</p>;
 
   const availableTransitions = allowedTransitions[currentStatus];
-  const canManageFull = accessLevel === "full";
-  const canRequest = accessLevel === "proponent";
+  const canManageFull = accessLevel === "full" && canWrite;
+  const canRequest = accessLevel === "proponent" && canWrite;
 
   return (
     <section>

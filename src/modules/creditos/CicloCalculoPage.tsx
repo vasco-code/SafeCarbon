@@ -52,6 +52,21 @@ const STEP_LABELS: Record<string, string> = {
   deducao_emissoes_operacionais_pastagem: "3. Dedução das emissões operacionais",
   desconto_incerteza: "4. Desconto de incerteza",
   buffer_permanencia: "5. Buffer de permanência (final)",
+  volume_creditavel: "E1. Volume creditável (V_el)",
+  materia_seca_tratada: "E2. Matéria seca tratada",
+  materia_seca_elegivel: "E3. Matéria seca elegível (exclui ionóforo)",
+  equivalente_animais_ano: "E4. Equivalente em animais-ano (informativo)",
+  emissao_linha_base: "E5. Emissão da linha de base",
+  reducao_bruta_ch4: "E6. Redução bruta de CH₄",
+  reducao_bruta_co2e: "E7. Redução bruta em CO₂e",
+  efeito_esterco: "E8. Efeito colateral do esterco",
+  emissoes_projeto: "E9. Emissões do projeto (alocadas)",
+  vazamento_mercado: "E10. Vazamento de mercado",
+  reducao_liquida: "E11. Redução líquida antes da incerteza",
+  deducao_incerteza: "E12. Dedução de incerteza",
+  reducao_ajustada: "E13. Redução ajustada",
+  reserva_integridade: "E14. Reserva de integridade",
+  reducoes_verificaveis: "E15. Reduções verificáveis (final)",
 };
 
 // Cada metodologia pode ter seu próprio motor de cálculo (Edge Function
@@ -60,6 +75,12 @@ const STEP_LABELS: Record<string, string> = {
 // futuras não listadas aqui caem no motor padrão (calculate-credit-cycle).
 const METHODOLOGY_CALC_FUNCTIONS: Record<string, string> = {
   "00000000-0000-0000-0000-000000000301": "calculate-credit-cycle-pasture",
+};
+// Roteamento por VERSÃO tem prioridade: a metodologia PMX-EM v2.0 é uma
+// versão própria, com motor próprio, e uma mesma metodologia pode ter versões
+// com motores diferentes.
+const METHODOLOGY_VERSION_CALC_FUNCTIONS: Record<string, string> = {
+  "00000000-0000-0000-0000-0000000000b3": "calculate-credit-cycle-pmx-em",
 };
 const DEFAULT_CALC_FUNCTION = "calculate-credit-cycle";
 
@@ -85,6 +106,7 @@ export function CicloCalculoPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [methodologyId, setMethodologyId] = useState<string | null>(null);
+  const [methodologyVersionId, setMethodologyVersionId] = useState<string | null>(null);
 
   async function loadData() {
     if (!projectId || !year) return;
@@ -92,13 +114,14 @@ export function CicloCalculoPage() {
 
     const { data: projectRow } = await supabase
       .from("carbon_projects")
-      .select("methodology_versions(methodology_id)")
+      .select("methodology_version_id, methodology_versions(methodology_id)")
       .eq("id", projectId)
       .maybeSingle();
     setMethodologyId(
       (projectRow as unknown as { methodology_versions: { methodology_id: string } | null } | null)
         ?.methodology_versions?.methodology_id ?? null,
     );
+    setMethodologyVersionId(projectRow?.methodology_version_id ?? null);
 
     const { data: cycleRow } = await supabase
       .from("credit_calculation_cycles")
@@ -157,9 +180,10 @@ export function CicloCalculoPage() {
     if (!projectId || !year) return;
     setCalculating(true);
     setError(null);
-    const functionName = methodologyId
-      ? METHODOLOGY_CALC_FUNCTIONS[methodologyId] ?? DEFAULT_CALC_FUNCTION
-      : DEFAULT_CALC_FUNCTION;
+    const functionName =
+      (methodologyVersionId && METHODOLOGY_VERSION_CALC_FUNCTIONS[methodologyVersionId]) ||
+      (methodologyId && METHODOLOGY_CALC_FUNCTIONS[methodologyId]) ||
+      DEFAULT_CALC_FUNCTION;
     const { data, error } = await supabase.functions.invoke(functionName, {
       body: { projectId, periodYear: Number(year) },
     });

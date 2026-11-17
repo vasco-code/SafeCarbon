@@ -21,7 +21,7 @@ interface DistributionImage {
 // 5 do DCP, quando o projeto já tem essa peça pronta). Reaproveita o mesmo
 // bucket/tabela de Documentos, só um doc_type novo — mesmo padrão já usado
 // pela "foto" de capa do projeto em ProjetosListPage.
-function DistribuicaoImagemSection({ projectId }: { projectId: string }) {
+function DistribuicaoImagemSection({ projectId, canUpload, canDelete }: { projectId: string; canUpload: boolean; canDelete: boolean }) {
   const { user } = useAuth();
   const { orgId } = useProjectRole(projectId);
   const [image, setImage] = useState<DistributionImage | null>(null);
@@ -112,15 +112,19 @@ function DistribuicaoImagemSection({ projectId }: { projectId: string }) {
             alt={image.title}
             style={{ maxWidth: "100%", borderRadius: "10px", border: "1px solid var(--sc-border)" }}
           />
-          <div style={{ marginTop: "0.75rem" }}>
-            <button type="button" className="btn-icon-danger" onClick={handleRemove}>
-              Remover imagem
-            </button>
-          </div>
+          {canDelete && (
+            <div style={{ marginTop: "0.75rem" }}>
+              <button type="button" className="btn-icon-danger" onClick={handleRemove}>
+                Remover imagem
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {!loading && !image && (
+      {!loading && !image && !canUpload && <p className="empty-state">Nenhuma imagem cadastrada ainda.</p>}
+
+      {!loading && !image && canUpload && (
         <FileDropzone
           accept="image/*"
           onFiles={handleUpload}
@@ -171,6 +175,8 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
 
 export function DistribuicaoPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const { accessLevel, canWrite } = useProjectRole(projectId);
+  const readOnly = !(accessLevel === "full" && canWrite);
   const [sites, setSites] = useState<ProjectSite[]>([]);
   const [loading, setLoading] = useState(true);
   const [label, setLabel] = useState("");
@@ -306,13 +312,20 @@ export function DistribuicaoPage() {
 
   return (
     <>
-      {projectId && <DistribuicaoImagemSection projectId={projectId} />}
+      {projectId && (
+        <DistribuicaoImagemSection
+          projectId={projectId}
+          canUpload={canWrite && (accessLevel === "full" || accessLevel === "proponent")}
+          canDelete={accessLevel === "full" && canWrite}
+        />
+      )}
       <section>
         <h2 className="module-heading">
           <MapPinned size={20} /> Unidades Produtoras
         </h2>
         <p>Localização geográfica das unidades produtoras do Fator P.</p>
 
+        {!readOnly && (
         <form onSubmit={handleCreate}>
         <label htmlFor="site-label">Local</label>
         <input id="site-label" type="text" value={label} onChange={(e) => setLabel(e.target.value)} required />
@@ -343,7 +356,10 @@ export function DistribuicaoPage() {
           {submitting ? "Adicionando..." : "Adicionar ponto"}
         </button>
       </form>
+      )}
 
+      {!readOnly && (
+      <>
       <h3 style={{ marginTop: "2rem" }}>Importar em massa</h3>
       <p style={{ marginBottom: "0.75rem" }}>
         Envie uma planilha (CSV/XLSX, com colunas de latitude/longitude) ou um shapefile zipado
@@ -355,6 +371,8 @@ export function DistribuicaoPage() {
         label="Arraste a planilha ou o shapefile (.zip) aqui"
         hint="CSV, XLSX, XLS ou ZIP contendo shapefile"
       />
+      </>
+      )}
 
       {importError && <p className="auth-error">{importError}</p>}
 
@@ -401,7 +419,7 @@ export function DistribuicaoPage() {
               <th>Latitude</th>
               <th>Longitude</th>
               <th>Análise SafeGisTrace</th>
-              <th></th>
+              {!readOnly && <th></th>}
             </tr>
           </thead>
           <tbody>
@@ -411,11 +429,13 @@ export function DistribuicaoPage() {
                 <td>{s.latitude}</td>
                 <td>{s.longitude}</td>
                 <td>{s.safegistrace_analysis_id ?? "—"}</td>
-                <td className="row-actions">
-                  <button type="button" className="btn-icon-danger" onClick={() => handleDelete(s.id)}>
-                    Excluir
-                  </button>
-                </td>
+                {!readOnly && (
+                  <td className="row-actions">
+                    <button type="button" className="btn-icon-danger" onClick={() => handleDelete(s.id)}>
+                      Excluir
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

@@ -93,11 +93,12 @@ export interface Database {
           proponent_org_id: string;
           developer_org_id: string;
           methodology_version_id: string | null;
-          registry_standard: "verra" | "gold_standard" | "mbre" | "none_yet";
+          registry_standard: "verra" | "gold_standard" | "mbre" | "none_yet" | "safe_trace_proprio";
           location_text: string | null;
           status: "design" | "validation" | "active" | "suspended" | "closed";
           description: string | null;
           hide_commercialization_section: boolean;
+          credit_split: Record<string, number> | null;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["carbon_projects"]["Row"]>;
@@ -165,6 +166,21 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["emission_factors"]["Row"]>;
         Relationships: [];
       };
+      project_period_inputs: {
+        Row: {
+          id: string;
+          project_id: string;
+          period_year: number;
+          input_key: string;
+          value: number;
+          unit: string;
+          source_ref: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["project_period_inputs"]["Row"]>;
+        Update: Partial<Database["public"]["Tables"]["project_period_inputs"]["Row"]>;
+        Relationships: [];
+      };
       emission_inventory_entries: {
         Row: {
           id: string;
@@ -177,6 +193,8 @@ export interface Database {
           calculated_tco2e: number;
           justification: string | null;
           site_id: string | null;
+          allocation_pct: number;
+          gross_tco2e: number | null;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["emission_inventory_entries"]["Row"]>;
@@ -217,6 +235,10 @@ export interface Database {
             | "approved"
             | "issued"
             | "rejected";
+          issuance_hold: boolean;
+          issuance_hold_reason: string | null;
+          engine_version: string | null;
+          source: "engine" | "external";
           calculated_at: string | null;
           calculated_by: string | null;
           created_at: string;
@@ -347,7 +369,10 @@ export interface Database {
           token_id: string;
           tx_hash: string;
           ledger_ref: string | null;
-          status: "active" | "transferred" | "retired";
+          status: "active" | "transferred" | "retired" | "cancelled";
+          cancelled_at: string | null;
+          cancelled_reason: string | null;
+          cancelled_by: string | null;
           owner_reference: string | null;
           holder_org_id: string | null;
           retired_at: string | null;

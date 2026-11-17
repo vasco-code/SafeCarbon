@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Wallet, ArrowLeftRight, Flame, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface WalletToken {
   id: string;
   tokenId: string;
-  status: "active" | "transferred" | "retired";
+  status: "active" | "transferred" | "retired" | "cancelled";
   holderOrgId: string | null;
   retiredAt: string | null;
   retiredReason: string | null;
@@ -39,6 +40,7 @@ const STATUS_LABELS: Record<string, string> = {
   active: "Ativo",
   transferred: "Transferido",
   retired: "Aposentado",
+  cancelled: "Cancelado",
 };
 
 function KpiCard({ icon: Icon, label, value }: { icon: typeof Wallet; label: string; value: string }) {
@@ -56,6 +58,15 @@ function KpiCard({ icon: Icon, label, value }: { icon: typeof Wallet; label: str
 }
 
 export function WalletView({ projectId }: { projectId?: string }) {
+  const { memberships } = useAuth();
+  // Transferir/aposentar só faz sentido pra quem tem escrita na própria
+  // organização detentora do token — um membro 'viewer' da org só acompanha.
+  // Não cobre o caminho "developer/admin do projeto operando por fora" (esse
+  // é sempre liberado, igual já era antes); RLS é quem garante os dois casos.
+  function canOperateHolder(holderOrgId: string | null) {
+    if (!holderOrgId) return true;
+    return memberships.find((m) => m.orgId === holderOrgId)?.memberRole !== "viewer";
+  }
   const [tokens, setTokens] = useState<WalletToken[]>([]);
   const [transfers, setTransfers] = useState<TransferRow[]>([]);
   const [orgs, setOrgs] = useState<OrgOption[]>([]);
@@ -197,7 +208,8 @@ export function WalletView({ projectId }: { projectId?: string }) {
 
   if (loading) return <p>Carregando...</p>;
 
-  const registered = tokens.reduce((sum, t) => sum + t.issuedAmount, 0);
+  // Token cancelado fica como histórico, mas não conta como crédito registrado.
+  const registered = tokens.filter((t) => t.status !== "cancelled").reduce((sum, t) => sum + t.issuedAmount, 0);
   const retired = tokens.filter((t) => t.status === "retired").reduce((sum, t) => sum + t.issuedAmount, 0);
   const available = tokens.filter((t) => t.status === "active").reduce((sum, t) => sum + t.issuedAmount, 0);
 
@@ -270,14 +282,18 @@ export function WalletView({ projectId }: { projectId?: string }) {
                 <td>
                   <span
                     className={`badge ${
-                      token.status === "active" ? "badge-success" : token.status === "retired" ? "badge-neutral" : "badge-info"
+                      token.status === "active"
+                        ? "badge-success"
+                        : token.status === "retired" || token.status === "cancelled"
+                          ? "badge-neutral"
+                          : "badge-info"
                     }`}
                   >
                     {STATUS_LABELS[token.status] ?? token.status}
                   </span>
                 </td>
                 <td className="row-actions">
-                  {token.status === "active" && (
+                  {token.status === "active" && canOperateHolder(token.holderOrgId) && (
                     <>
                       <button type="button" onClick={() => setTransferringId(transferringId === token.id ? null : token.id)}>
                         Transferir

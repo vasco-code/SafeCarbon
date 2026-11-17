@@ -15,7 +15,7 @@ interface YearRow {
 
 interface TokenRow {
   token_id: string;
-  status: "active" | "transferred" | "retired";
+  status: "active" | "transferred" | "retired" | "cancelled";
   issued_amount_tco2e: number;
   issued_at: string;
 }
@@ -32,6 +32,7 @@ const TOKEN_STATUS_LABELS: Record<string, string> = {
   active: "Ativo",
   transferred: "Transferido",
   retired: "Aposentado",
+  cancelled: "Cancelado",
 };
 
 export function RelatorioEmissoesPage() {

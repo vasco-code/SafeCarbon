@@ -2,11 +2,15 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import { Cloud } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useProjectRole } from "@/hooks/useProjectRole";
+import { DIRECT_SOURCES, SOURCE_LABELS, sourceLabel, type SourceType } from "./sourceLabels";
 
 interface EmissionFactor {
   id: string;
   category: string;
   value: number;
+  valid_from: string;
+  valid_to: string | null;
 }
 
 interface InventoryEntry {
@@ -18,6 +22,7 @@ interface InventoryEntry {
   calculated_tco2e: number;
   justification: string | null;
   site_id: string | null;
+  allocation_pct: number;
 }
 
 interface ProjectSite {
@@ -27,16 +32,18 @@ interface ProjectSite {
 
 const NO_SITE_LABEL = "Projeto (sem local específico)";
 
-type SourceType = "biomass_combustion" | "diesel_transport" | "electricity";
-
-const SOURCE_LABELS: Record<SourceType, string> = {
-  biomass_combustion: "Combustão de biomassa (lenha)",
-  diesel_transport: "Combustível fóssil (diesel)",
-  electricity: "Energia elétrica",
+const ACTIVITY_UNITS: Record<SourceType, string> = {
+  biomass_combustion: "kg",
+  diesel_transport: "L",
+  electricity: "kWh",
+  waste: "tCO₂e",
+  upstream_inputs: "tCO₂e",
 };
 
 export function InventarioPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const { accessLevel, canWrite } = useProjectRole(projectId);
+  const canDelete = accessLevel === "full" && canWrite;
   const [factors, setFactors] = useState<EmissionFactor[]>([]);
   const [entries, setEntries] = useState<InventoryEntry[]>([]);
   const [sites, setSites] = useState<ProjectSite[]>([]);
@@ -44,6 +51,8 @@ export function InventarioPage() {
   const [sourceType, setSourceType] = useState<SourceType>("biomass_combustion");
   const [siteId, setSiteId] = useState("");
   const [activityQuantity, setActivityQuantity] = useState("");
+  const [allocationPct, setAllocationPct] = useState("100");
+  const [excludeSource, setExcludeSource] = useState(false);
   const [justification, setJustification] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -51,10 +60,10 @@ export function InventarioPage() {
   async function loadData() {
     if (!projectId) return;
     const [factorsResult, entriesResult, sitesResult] = await Promise.all([
-      supabase.from("emission_factors").select("id, category, value"),
+      supabase.from("emission_factors").select("id, category, value, valid_from, valid_to"),
       supabase
         .from("emission_inventory_entries")
-        .select("id, period_year, source_type, activity_quantity, activity_unit, calculated_tco2e, justification, site_id")
+        .select("id, period_year, source_type, activity_quantity, activity_unit, calculated_tco2e, justification, site_id, allocation_pct")
         .eq("project_id", projectId)
         .order("period_year", { ascending: false }),
       supabase.from("project_sites").select("id, label").eq("project_id", projectId).order("label"),
@@ -68,19 +77,40 @@ export function InventarioPage() {
     loadData();
   }, [projectId]);
 
+  // Fator vigente no ano do lançamento: valid_from <= 31/12 e (valid_to nulo
+  // ou >= 01/01), o mais recente primeiro. Antes pegava o primeiro registro
+  // da categoria, o que quebra assim que existirem dois fatores do mesmo tipo.
+  function currentFactor(category: string) {
+    const year = Number(periodYear);
+    return factors
+      .filter(
+        (f) =>
+          f.category === category &&
+          f.valid_from <= `${year}-12-31` &&
+          (f.valid_to === null || f.valid_to >= `${year}-01-01`),
+      )
+      .sort((a, b) => b.valid_from.localeCompare(a.valid_from))[0];
+  }
+
   function factorValue(category: string) {
-    return factors.find((f) => f.category === category)?.value ?? null;
+    return currentFactor(category)?.value ?? null;
   }
 
   function factorId(category: string) {
-    return factors.find((f) => f.category === category)?.id ?? null;
+    return currentFactor(category)?.id ?? null;
   }
 
-  // Calcula tCO2e a partir da quantidade de atividade e dos fatores vigentes —
-  // nunca digitado à mão. Biomassa: kg -> Gg -> TJ -> kg CH4/N2O -> tCO2e via GWP.
+  // Calcula tCO2e BRUTO a partir da quantidade de atividade e dos fatores
+  // vigentes — nunca digitado à mão, exceto nas fontes diretas (resíduos e
+  // insumos), que vêm de cálculo próprio documentado no DCP.
+  // Biomassa: kg -> Gg -> TJ -> kg CH4/N2O -> tCO2e via GWP.
   function calculatePreview(): { tco2e: number; factorIds: string[] } | null {
     const quantity = Number(activityQuantity);
     if (!quantity || quantity <= 0) return null;
+
+    if (DIRECT_SOURCES.includes(sourceType)) {
+      return { tco2e: quantity, factorIds: [] };
+    }
 
     if (sourceType === "biomass_combustion") {
       const ch4 = factorValue("biomass_ch4");
@@ -114,22 +144,49 @@ export function InventarioPage() {
       };
     }
 
+    // Energia elétrica (escopo 2, localização): kWh -> MWh × fator médio do SIN.
+    if (sourceType === "electricity") {
+      const gridFactor = factorValue("electricity_grid");
+      if (gridFactor == null) return null;
+      return {
+        tco2e: (quantity / 1000) * gridFactor,
+        factorIds: [factorId("electricity_grid")].filter((id): id is string => id !== null),
+      };
+    }
+
     return null;
   }
 
   const isElectricity = sourceType === "electricity";
-  const preview = isElectricity ? null : calculatePreview();
+  const isDirect = DIRECT_SOURCES.includes(sourceType);
+  const allocation = Number(allocationPct);
+  const allocationValid = allocation > 0 && allocation <= 100;
+  const preview = isElectricity && excludeSource ? null : calculatePreview();
+  const allocatedPreview = preview && allocationValid ? (preview.tco2e * allocation) / 100 : null;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!projectId) return;
     setError(null);
 
-    if (isElectricity) {
-      if (!justification.trim()) {
-        setError("Ao excluir uma fonte (ex.: energia renovável), a justificativa é obrigatória.");
-        return;
-      }
+    if (!allocationValid) {
+      setError("A chave de alocação deve ser maior que 0 e no máximo 100 (%).");
+      return;
+    }
+
+    // Exclusão explícita de uma fonte (ex.: energia renovável comprovada) e
+    // fontes diretas exigem justificativa.
+    const needsJustification = (isElectricity && excludeSource) || isDirect;
+    if (needsJustification && !justification.trim()) {
+      setError(
+        isDirect
+          ? "Resíduos e insumos são lançados direto em tCO₂e — a justificativa (origem do cálculo, referência ao DCP) é obrigatória."
+          : "Ao excluir uma fonte (ex.: energia renovável), a justificativa é obrigatória.",
+      );
+      return;
+    }
+
+    if (isElectricity && excludeSource) {
       setSubmitting(true);
       const { error } = await supabase.from("emission_inventory_entries").insert({
         project_id: projectId,
@@ -139,6 +196,8 @@ export function InventarioPage() {
         activity_unit: "kWh",
         emission_factor_ids: [],
         calculated_tco2e: 0,
+        gross_tco2e: 0,
+        allocation_pct: allocation,
         justification,
         site_id: siteId || null,
       });
@@ -153,7 +212,7 @@ export function InventarioPage() {
       return;
     }
 
-    if (!preview) {
+    if (!preview || allocatedPreview === null) {
       setError("Não foi possível calcular — verifique a quantidade e se os fatores de emissão estão cadastrados.");
       return;
     }
@@ -164,9 +223,11 @@ export function InventarioPage() {
       period_year: Number(periodYear),
       source_type: sourceType,
       activity_quantity: Number(activityQuantity),
-      activity_unit: sourceType === "biomass_combustion" ? "kg" : "L",
+      activity_unit: ACTIVITY_UNITS[sourceType],
       emission_factor_ids: preview.factorIds,
-      calculated_tco2e: preview.tco2e,
+      gross_tco2e: preview.tco2e,
+      allocation_pct: allocation,
+      calculated_tco2e: allocatedPreview,
       justification: justification || null,
       site_id: siteId || null,
     });
@@ -217,6 +278,7 @@ export function InventarioPage() {
       </h2>
       <p>Lançamento de fontes de emissão e cálculo automático em tCO₂e.</p>
 
+      {canWrite && (
       <form onSubmit={handleSubmit}>
         <label htmlFor="inv-year">Ano</label>
         <input id="inv-year" type="number" value={periodYear} onChange={(e) => setPeriodYear(e.target.value)} required />
@@ -241,7 +303,7 @@ export function InventarioPage() {
         </select>
 
         <label htmlFor="inv-quantity">
-          Quantidade ({sourceType === "biomass_combustion" ? "kg" : sourceType === "diesel_transport" ? "L" : "kWh"})
+          {isDirect ? "Emissão calculada (tCO₂e, antes da alocação)" : `Quantidade (${ACTIVITY_UNITS[sourceType]})`}
         </label>
         <input
           id="inv-quantity"
@@ -252,8 +314,26 @@ export function InventarioPage() {
           onChange={(e) => setActivityQuantity(e.target.value)}
         />
 
+        {isElectricity && (
+          <label style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            <input type="checkbox" checked={excludeSource} onChange={(e) => setExcludeSource(e.target.checked)} />
+            Excluir esta fonte do inventário (ex.: energia renovável comprovada)
+          </label>
+        )}
+
+        <label htmlFor="inv-allocation">Chave de alocação ao projeto (%)</label>
+        <input
+          id="inv-allocation"
+          type="number"
+          step="0.00001"
+          min="0.00001"
+          max="100"
+          value={allocationPct}
+          onChange={(e) => setAllocationPct(e.target.value)}
+        />
+
         <label htmlFor="inv-justification">
-          Justificativa {isElectricity ? "(obrigatória para exclusão desta fonte)" : "(opcional)"}
+          Justificativa {isDirect || (isElectricity && excludeSource) ? "(obrigatória para esta fonte)" : "(opcional)"}
         </label>
         <input
           id="inv-justification"
@@ -263,7 +343,10 @@ export function InventarioPage() {
         />
 
         {preview && (
-          <p className="auth-success">Prévia do cálculo: {preview.tco2e.toFixed(4)} tCO₂e</p>
+          <p className="auth-success">
+            Prévia do cálculo: {preview.tco2e.toFixed(4)} tCO₂e
+            {allocatedPreview !== null && allocation !== 100 && ` → ${allocatedPreview.toFixed(4)} tCO₂e após alocação de ${allocation}%`}
+          </p>
         )}
 
         {error && <p className="auth-error">{error}</p>}
@@ -272,6 +355,7 @@ export function InventarioPage() {
           {submitting ? "Salvando..." : "Lançar fonte de emissão"}
         </button>
       </form>
+      )}
 
       <h2>Lançamentos — total {totalTco2e.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e</h2>
       {entries.length === 0 && (
@@ -289,25 +373,30 @@ export function InventarioPage() {
               <th>Quantidade</th>
               <th>tCO₂e</th>
               <th>Justificativa</th>
-              <th></th>
+              {canDelete && <th></th>}
             </tr>
           </thead>
           <tbody>
             {entries.map((e) => (
               <tr key={e.id}>
                 <td>{e.period_year}</td>
-                <td>{SOURCE_LABELS[e.source_type as SourceType] ?? e.source_type}</td>
+                <td>
+                  {sourceLabel(e.source_type)}
+                  {Number(e.allocation_pct) !== 100 && ` (alocação ${Number(e.allocation_pct)}%)`}
+                </td>
                 <td>{siteLabel(e.site_id)}</td>
                 <td>
                   {e.activity_quantity.toLocaleString("pt-BR")} {e.activity_unit}
                 </td>
                 <td>{e.calculated_tco2e.toLocaleString("pt-BR", { maximumFractionDigits: 4 })}</td>
                 <td>{e.justification ?? "—"}</td>
-                <td className="row-actions">
-                  <button type="button" className="btn-icon-danger" onClick={() => handleDelete(e.id)}>
-                    Excluir
-                  </button>
-                </td>
+                {canDelete && (
+                  <td className="row-actions">
+                    <button type="button" className="btn-icon-danger" onClick={() => handleDelete(e.id)}>
+                      Excluir
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

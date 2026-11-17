@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { sourceLabel } from "@/modules/inventario-emissoes/sourceLabels";
 import { useParams } from "react-router-dom";
 import { ShieldCheck, FileDown, Download } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -155,7 +156,7 @@ function DocumentosAuditoria({ projectId, canUpload }: { projectId: string; canU
 
 export function VerificacaoPage() {
   const { projectId } = useParams<{ projectId: string }>();
-  const { accessLevel } = useProjectRole(projectId);
+  const { accessLevel, canWrite } = useProjectRole(projectId);
   const [cycles, setCycles] = useState<VerificationCycle[]>([]);
   const [vvbOrgs, setVvbOrgs] = useState<{ id: string; name: string }[]>([]);
   const [startYear, setStartYear] = useState("2025");
@@ -183,7 +184,7 @@ export function VerificacaoPage() {
   }
 
   useEffect(() => {
-    if (accessLevel === "full") loadData();
+    if (accessLevel === "full" || accessLevel === "proponent") loadData();
   }, [projectId, accessLevel]);
 
   async function handleSchedule(event: FormEvent) {
@@ -286,7 +287,7 @@ export function VerificacaoPage() {
       `<h1>Relatório de Monitoramento — ${reportYear}</h1>`,
       `<p>Produção: ${summary?.total_produced_kg?.toLocaleString("pt-BR") ?? "—"} kg. Comercialização: ${summary?.total_commercialized_kg?.toLocaleString("pt-BR") ?? "—"} kg (Fc = ${summary?.commercialization_factor?.toFixed(4) ?? "—"}).</p>`,
       `<h2>Inventário de emissões</h2>`,
-      `<ul>${inventory.map((e) => `<li>${e.source_type}: ${Number(e.calculated_tco2e).toLocaleString("pt-BR", { maximumFractionDigits: 4 })} tCO2e</li>`).join("")}</ul>`,
+      `<ul>${inventory.map((e) => `<li>${sourceLabel(e.source_type)}: ${Number(e.calculated_tco2e).toLocaleString("pt-BR", { maximumFractionDigits: 4 })} tCO2e</li>`).join("")}</ul>`,
       `<p>Total: ${totalInventario.toLocaleString("pt-BR", { maximumFractionDigits: 4 })} tCO2e</p>`,
       `<h2>Avaliação de vazamentos</h2>`,
       `<ul>${leakage.map((l) => `<li>${l.category}: ${l.conclusion} (LF = ${l.leakage_factor_pct}%)</li>`).join("")}</ul>`,
@@ -324,7 +325,43 @@ export function VerificacaoPage() {
         <h2 className="module-heading">
           <ShieldCheck size={20} /> Verificação
         </h2>
-        <DocumentosAuditoria projectId={projectId} canUpload />
+        <DocumentosAuditoria projectId={projectId} canUpload={canWrite} />
+      </section>
+    );
+  }
+
+  // Qualquer accessLevel que não seja 'full' nem 'verifier' (hoje só
+  // 'proponent') só acompanha os ciclos já existentes, sem agendar/aprovar/
+  // rejeitar nem gerar relatório de monitoramento — isso é exclusivo de
+  // developer/admin/platform_admin. Antes desta correção, esse branch caía
+  // no mesmo JSX de 'full' por engano.
+  if (accessLevel !== "full") {
+    return (
+      <section>
+        <h2 className="module-heading">
+          <ShieldCheck size={20} /> Verificação e Emissão
+        </h2>
+        <p>Ciclos de verificação, pareceres e status de tokenização.</p>
+
+        <h2>Ciclos de verificação</h2>
+        {cycles.length === 0 && (
+          <div className="empty-state">
+            <p>Nenhum ciclo de verificação agendado ainda.</p>
+          </div>
+        )}
+        {cycles.map((cycle) => (
+          <div key={cycle.id} className="dcp-section">
+            <h2>
+              {cycle.period_start_year}–{cycle.period_end_year} — status: {cycle.status}
+            </h2>
+            {cycle.findings && <p>Parecer registrado: {cycle.findings.texto}</p>}
+            {cycle.verified_at && <p>Concluído em {new Date(cycle.verified_at).toLocaleString("pt-BR")}</p>}
+          </div>
+        ))}
+
+        <div style={{ marginTop: "2rem", borderTop: "1px solid var(--sc-border)", paddingTop: "1.5rem" }}>
+          <DocumentosAuditoria projectId={projectId} canUpload={canWrite} />
+        </div>
       </section>
     );
   }
@@ -339,38 +376,42 @@ export function VerificacaoPage() {
       {error && <p className="auth-error">{error}</p>}
       {message && <p className="auth-success">{message}</p>}
 
-      <h2>Agendar ciclo de verificação</h2>
-      <form onSubmit={handleSchedule}>
-        <label htmlFor="ver-start">Ano inicial</label>
-        <input id="ver-start" type="number" value={startYear} onChange={(e) => setStartYear(e.target.value)} required />
+      {canWrite && (
+        <>
+          <h2>Agendar ciclo de verificação</h2>
+          <form onSubmit={handleSchedule}>
+            <label htmlFor="ver-start">Ano inicial</label>
+            <input id="ver-start" type="number" value={startYear} onChange={(e) => setStartYear(e.target.value)} required />
 
-        <label htmlFor="ver-end">Ano final</label>
-        <input id="ver-end" type="number" value={endYear} onChange={(e) => setEndYear(e.target.value)} required />
+            <label htmlFor="ver-end">Ano final</label>
+            <input id="ver-end" type="number" value={endYear} onChange={(e) => setEndYear(e.target.value)} required />
 
-        <label htmlFor="ver-vvb">Organismo verificador (VVB)</label>
-        <select id="ver-vvb" value={vvbOrgId} onChange={(e) => setVvbOrgId(e.target.value)}>
-          <option value="">(não listado — sem acesso de leitura a outras organizações)</option>
-          {vvbOrgs.map((org) => (
-            <option key={org.id} value={org.id}>
-              {org.name}
-            </option>
-          ))}
-        </select>
+            <label htmlFor="ver-vvb">Organismo verificador (VVB)</label>
+            <select id="ver-vvb" value={vvbOrgId} onChange={(e) => setVvbOrgId(e.target.value)}>
+              <option value="">(não listado — sem acesso de leitura a outras organizações)</option>
+              {vvbOrgs.map((org) => (
+                <option key={org.id} value={org.id}>
+                  {org.name}
+                </option>
+              ))}
+            </select>
 
-        <button type="submit">Agendar</button>
-      </form>
+            <button type="submit">Agendar</button>
+          </form>
 
-      <h2>Relatório de Monitoramento</h2>
-      <div className="action-bar">
-        <div className="action-bar-field">
-          <label htmlFor="report-year">Ano</label>
-          <input id="report-year" type="number" value={reportYear} onChange={(e) => setReportYear(e.target.value)} />
-        </div>
-        <button type="button" className="btn-primary" onClick={handleGenerateReport} disabled={reportGenerating}>
-          <FileDown size={15} />
-          {reportGenerating ? "Gerando..." : "Gerar relatório de monitoramento (.doc)"}
-        </button>
-      </div>
+          <h2>Relatório de Monitoramento</h2>
+          <div className="action-bar">
+            <div className="action-bar-field">
+              <label htmlFor="report-year">Ano</label>
+              <input id="report-year" type="number" value={reportYear} onChange={(e) => setReportYear(e.target.value)} />
+            </div>
+            <button type="button" className="btn-primary" onClick={handleGenerateReport} disabled={reportGenerating}>
+              <FileDown size={15} />
+              {reportGenerating ? "Gerando..." : "Gerar relatório de monitoramento (.doc)"}
+            </button>
+          </div>
+        </>
+      )}
 
       <h2>Ciclos de verificação</h2>
       {cycles.map((cycle) => (
@@ -381,7 +422,7 @@ export function VerificacaoPage() {
           {cycle.findings && <p>Parecer registrado: {cycle.findings.texto}</p>}
           {cycle.verified_at && <p>Concluído em {new Date(cycle.verified_at).toLocaleString("pt-BR")}</p>}
 
-          {(cycle.status === "scheduled" || cycle.status === "in_progress") && (
+          {canWrite && (cycle.status === "scheduled" || cycle.status === "in_progress") && (
             <>
               <label htmlFor={`findings-${cycle.id}`}>Parecer (findings)</label>
               <textarea
@@ -410,7 +451,7 @@ export function VerificacaoPage() {
       ))}
 
       <div style={{ marginTop: "2rem", borderTop: "1px solid var(--sc-border)", paddingTop: "1.5rem" }}>
-        <DocumentosAuditoria projectId={projectId} canUpload />
+        <DocumentosAuditoria projectId={projectId} canUpload={canWrite} />
       </div>
     </section>
   );

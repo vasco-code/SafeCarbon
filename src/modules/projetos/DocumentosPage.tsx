@@ -33,7 +33,11 @@ const DOC_TYPE_ORDER: DocType[] = ["metodologia", "dcp", "resumo_calculo", "moni
 export function DocumentosPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { user } = useAuth();
-  const { orgId } = useProjectRole(projectId);
+  const { orgId, accessLevel, canWrite } = useProjectRole(projectId);
+  const canUpload = canWrite && (accessLevel === "full" || accessLevel === "proponent");
+  const VERIFIER_DOC_TYPES: DocType[] = ["auditoria_aprovacao", "plano_melhorias"];
+  const canDelete = (doc: ProjectDocument) =>
+    canWrite && (accessLevel === "full" || (accessLevel === "verifier" && VERIFIER_DOC_TYPES.includes(doc.doc_type)));
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [docType, setDocType] = useState<DocType>("metodologia");
@@ -119,30 +123,34 @@ export function DocumentosPage() {
       </h2>
       <p>Repositório central do projeto — DCP, resumo de cálculo, documentos de auditoria, checklist e outros arquivos.</p>
 
-      <div className="action-bar">
-        <div className="action-bar-field">
-          <label htmlFor="doc-type">Tipo</label>
-          <select id="doc-type" value={docType} onChange={(e) => setDocType(e.target.value as DocType)}>
-            {DOC_TYPE_ORDER.map((type) => (
-              <option key={type} value={type}>
-                {DOC_TYPE_LABELS[type]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="action-bar-field">
-          <label htmlFor="doc-title">Título (opcional)</label>
-          <input id="doc-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
-        </div>
-      </div>
+      {canUpload && (
+        <>
+          <div className="action-bar">
+            <div className="action-bar-field">
+              <label htmlFor="doc-type">Tipo</label>
+              <select id="doc-type" value={docType} onChange={(e) => setDocType(e.target.value as DocType)}>
+                {DOC_TYPE_ORDER.map((type) => (
+                  <option key={type} value={type}>
+                    {DOC_TYPE_LABELS[type]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="action-bar-field">
+              <label htmlFor="doc-title">Título (opcional)</label>
+              <input id="doc-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+          </div>
 
-      <FileDropzone
-        multiple
-        onFiles={handleFiles}
-        disabled={uploading}
-        label={uploading ? "Enviando..." : "Arraste arquivos aqui ou clique para escolher"}
-        hint="PDF, DOCX, imagens — qualquer formato."
-      />
+          <FileDropzone
+            multiple
+            onFiles={handleFiles}
+            disabled={uploading}
+            label={uploading ? "Enviando..." : "Arraste arquivos aqui ou clique para escolher"}
+            hint="PDF, DOCX, imagens — qualquer formato."
+          />
+        </>
+      )}
 
       {error && <p className="auth-error">{error}</p>}
 
@@ -174,9 +182,11 @@ export function DocumentosPage() {
                         <button type="button" onClick={() => handleDownload(doc)}>
                           <Download size={14} /> Baixar
                         </button>
-                        <button type="button" className="btn-icon-danger" onClick={() => handleDelete(doc)}>
-                          <Trash2 size={14} /> Excluir
-                        </button>
+                        {canDelete(doc) && (
+                          <button type="button" className="btn-icon-danger" onClick={() => handleDelete(doc)}>
+                            <Trash2 size={14} /> Excluir
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

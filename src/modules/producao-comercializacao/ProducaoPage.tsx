@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import { Factory } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useProjectRole } from "@/hooks/useProjectRole";
 
 interface ProductionRecord {
   id: string;
@@ -20,6 +21,8 @@ interface PeriodSummary {
 
 export function ProducaoPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const { accessLevel, canWrite } = useProjectRole(projectId);
+  const canDelete = accessLevel === "full" && canWrite;
   const [records, setRecords] = useState<ProductionRecord[]>([]);
   const [summary, setSummary] = useState<PeriodSummary[]>([]);
   const [periodYear, setPeriodYear] = useState(String(new Date().getFullYear()));
@@ -87,33 +90,35 @@ export function ProducaoPage() {
       </h2>
       <p>Lançamento e consolidação da produção por período.</p>
 
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="period-year">Ano</label>
-        <input
-          id="period-year"
-          type="number"
-          value={periodYear}
-          onChange={(e) => setPeriodYear(e.target.value)}
-          required
-        />
+      {canWrite && (
+        <form onSubmit={handleSubmit}>
+          <label htmlFor="period-year">Ano</label>
+          <input
+            id="period-year"
+            type="number"
+            value={periodYear}
+            onChange={(e) => setPeriodYear(e.target.value)}
+            required
+          />
 
-        <label htmlFor="quantity-kg">Quantidade produzida (kg)</label>
-        <input
-          id="quantity-kg"
-          type="number"
-          step="0.01"
-          min="0"
-          value={quantityKg}
-          onChange={(e) => setQuantityKg(e.target.value)}
-          required
-        />
+          <label htmlFor="quantity-kg">Quantidade produzida (kg)</label>
+          <input
+            id="quantity-kg"
+            type="number"
+            step="0.01"
+            min="0"
+            value={quantityKg}
+            onChange={(e) => setQuantityKg(e.target.value)}
+            required
+          />
 
-        {error && <p className="auth-error">{error}</p>}
+          {error && <p className="auth-error">{error}</p>}
 
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Salvando..." : "Lançar produção"}
-        </button>
-      </form>
+          <button type="submit" disabled={submitting}>
+            {submitting ? "Salvando..." : "Lançar produção"}
+          </button>
+        </form>
+      )}
 
       <h2>Resumo por ano (Pfp, Tc, Fc)</h2>
       <table>
@@ -150,7 +155,7 @@ export function ProducaoPage() {
               <th>Ano</th>
               <th>Quantidade (kg)</th>
               <th>Origem</th>
-              <th></th>
+              {canDelete && <th></th>}
             </tr>
           </thead>
           <tbody>
@@ -159,11 +164,13 @@ export function ProducaoPage() {
                 <td>{r.period_year}</td>
                 <td>{r.quantity_kg.toLocaleString("pt-BR")}</td>
                 <td>{r.source}</td>
-                <td className="row-actions">
-                  <button type="button" className="btn-icon-danger" onClick={() => handleDelete(r.id)}>
-                    Excluir
-                  </button>
-                </td>
+                {canDelete && (
+                  <td className="row-actions">
+                    <button type="button" className="btn-icon-danger" onClick={() => handleDelete(r.id)}>
+                      Excluir
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

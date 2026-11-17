@@ -17,6 +17,13 @@ export function useProjectRole(projectId: string | undefined) {
   const [orgId, setOrgId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // member_role 'viewer' dentro da própria organização derruba a escrita,
+  // mesmo mantendo o accessLevel (full/proponent/verifier) — permite convidar
+  // alguém pra só acompanhar um projeto sem poder preencher nada. orgId nulo
+  // (platform_admin sem vínculo direto) não tem membership correspondente,
+  // então cai no "não é viewer" e mantém acesso total.
+  const canWrite = accessLevel !== null && memberships.find((m) => m.orgId === orgId)?.memberRole !== "viewer";
+
   useEffect(() => {
     let cancelled = false;
 
@@ -76,5 +83,5 @@ export function useProjectRole(projectId: string | undefined) {
     };
   }, [projectId, isPlatformAdmin, memberships]);
 
-  return { accessLevel, orgId, loading };
+  return { accessLevel, orgId, canWrite, loading };
 }

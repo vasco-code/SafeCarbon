@@ -57,6 +57,9 @@ Deno.serve(async (req) => {
     if (token.status === "retired") {
       return json({ error: "Token já está aposentado." }, 400);
     }
+    if (token.status === "cancelled") {
+      return json({ error: "Token cancelado não pode ser aposentado." }, 400);
+    }
 
     // deno-lint-ignore no-explicit-any
     const projectId = (token as any).credit_issuances?.credit_batches?.credit_calculation_cycles?.project_id;

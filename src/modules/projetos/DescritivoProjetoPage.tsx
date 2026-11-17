@@ -44,50 +44,98 @@ function KpiCardsRow({ projectId }: { projectId: string }) {
   const [loading, setLoading] = useState(true);
   const [cycleYear, setCycleYear] = useState<number | null>(null);
   const [cycleStatus, setCycleStatus] = useState<string | null>(null);
-  const [commercializedKg, setCommercializedKg] = useState<number | null>(null);
-  const [eligibleTco2e, setEligibleTco2e] = useState<number | null>(null);
+  const [volumeLabel, setVolumeLabel] = useState("Produto comercializado");
+  const [volumeKg, setVolumeKg] = useState<number | null>(null);
+  const [reductionTco2e, setReductionTco2e] = useState<number | null>(null);
+  const [reductionVerified, setReductionVerified] = useState(false);
   const [totalIssuedTco2e, setTotalIssuedTco2e] = useState(0);
+  const [potentialTco2e, setPotentialTco2e] = useState<number | null>(null);
 
   useEffect(() => {
     async function load() {
       const { data: cycles } = await supabase
         .from("credit_calculation_cycles")
-        .select("id, period_year, status, credit_batches(tco2e_amount, credit_issuances(issued_amount_tco2e))")
+        .select(
+          "id, period_year, status, credit_batches(tco2e_amount, status, credit_issuances(issued_amount_tco2e, blockchain_tokens(status)))",
+        )
         .eq("project_id", projectId)
         .order("period_year", { ascending: false });
 
+      type IssuanceRow = {
+        issued_amount_tco2e: number;
+        blockchain_tokens: { status: string } | { status: string }[] | null;
+      };
       const cyclesTyped = (cycles ?? []) as unknown as {
+        id: string;
         period_year: number;
         status: string;
-        credit_batches: { tco2e_amount: number; credit_issuances: { issued_amount_tco2e: number }[] }[];
+        credit_batches: { tco2e_amount: number; status: string; credit_issuances: IssuanceRow[] }[];
       }[];
 
       const latest = cyclesTyped[0];
+      let usesVolumeStep = false;
       if (latest) {
         setCycleYear(latest.period_year);
         setCycleStatus(latest.status);
-        setEligibleTco2e(latest.credit_batches?.[0]?.tco2e_amount ?? null);
+        const batch = latest.credit_batches?.[0];
+        setReductionTco2e(batch?.tco2e_amount != null ? Number(batch.tco2e_amount) : null);
+        // Só conta como "verificada" depois da aprovação do lote pelo verificador.
+        setReductionVerified(batch?.status === "approved" || batch?.status === "issued");
+
+        // Motores novos (PMX-EM v2.0) gravam o volume creditável na etapa E1;
+        // os antigos não — nesse caso segue o "produto comercializado".
+        const { data: volumeStep } = await supabase
+          .from("credit_calculation_steps")
+          .select("output_value")
+          .eq("cycle_id", latest.id)
+          .eq("step_key", "volume_creditavel")
+          .maybeSingle();
+        if (volumeStep) {
+          usesVolumeStep = true;
+          setVolumeLabel("Volume creditável");
+          setVolumeKg(Number(volumeStep.output_value));
+        }
+
+        const { data: potential } = await supabase
+          .from("project_period_inputs")
+          .select("value")
+          .eq("project_id", projectId)
+          .eq("period_year", latest.period_year)
+          .eq("input_key", "potencial_validacao_tco2e")
+          .maybeSingle();
+        setPotentialTco2e(potential ? Number(potential.value) : null);
       }
 
+      // Créditos gerados = emissões vigentes; token cancelado não conta.
+      const isCancelled = (i: IssuanceRow) => {
+        const token = Array.isArray(i.blockchain_tokens) ? i.blockchain_tokens[0] : i.blockchain_tokens;
+        return token?.status === "cancelled";
+      };
       const totalIssued = cyclesTyped.reduce(
         (sum, c) =>
           sum +
           (c.credit_batches ?? []).reduce(
-            (s2, b) => s2 + (b.credit_issuances ?? []).reduce((s3, i) => s3 + Number(i.issued_amount_tco2e), 0),
+            (s2, b) =>
+              s2 +
+              (b.credit_issuances ?? [])
+                .filter((i) => !isCancelled(i))
+                .reduce((s3, i) => s3 + Number(i.issued_amount_tco2e), 0),
             0,
           ),
         0,
       );
       setTotalIssuedTco2e(totalIssued);
 
-      const { data: production } = await supabase
-        .from("production_period_summary")
-        .select("period_year, total_commercialized_kg")
-        .eq("project_id", projectId)
-        .order("period_year", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      setCommercializedKg(production?.total_commercialized_kg ?? null);
+      if (!usesVolumeStep) {
+        const { data: production } = await supabase
+          .from("production_period_summary")
+          .select("period_year, total_commercialized_kg")
+          .eq("project_id", projectId)
+          .order("period_year", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        setVolumeKg(production?.total_commercialized_kg ?? null);
+      }
 
       setLoading(false);
     }
@@ -106,27 +154,32 @@ function KpiCardsRow({ projectId }: { projectId: string }) {
       />
       <KpiCard
         icon={Package}
-        label="Produto comercializado"
-        value={
-          commercializedKg != null
-            ? `${commercializedKg.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kg`
-            : "—"
-        }
+        label={volumeLabel}
+        value={volumeKg != null ? `${volumeKg.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kg` : "—"}
       />
       <KpiCard
         icon={Leaf}
-        label="Redução de emissões elegível"
+        label={reductionVerified ? "Redução verificada" : "Redução calculada"}
         value={
-          eligibleTco2e != null
-            ? `${eligibleTco2e.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e`
+          reductionTco2e != null
+            ? `${reductionTco2e.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e`
             : "—"
         }
+        hint={reductionVerified ? undefined : "Aguardando verificação"}
       />
       <KpiCard
         icon={Award}
         label="Créditos gerados"
         value={`${totalIssuedTco2e.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e`}
       />
+      {potentialTco2e != null && (
+        <KpiCard
+          icon={Leaf}
+          label="Potencial em validação"
+          value={`${potentialTco2e.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} tCO₂e`}
+          hint="Informativo — não emitível"
+        />
+      )}
     </div>
   );
 }
@@ -155,6 +208,7 @@ const REGISTRY_LABELS: Record<string, string> = {
   gold_standard: "Gold Standard",
   mbre: "MBRE",
   none_yet: "Nenhum ainda",
+  safe_trace_proprio: "Metodologia própria registrada na Safe Trace (em registro)",
 };
 
 function OrgSummary({ label, org }: { label: string; org: OrgInfo | null }) {
